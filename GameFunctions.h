@@ -18,6 +18,8 @@ Defines
 #define PARALLAX_MAX 31
 #define PARALLAX_SHIFT 8
 #define ROTATION_SPEED 6
+#define NUM_SCALE_UP(X) (X<<7)
+#define NUM_SCALE_DN(X) (X>>7)
 /*******************************
 Variables
 *******************************/
@@ -27,7 +29,7 @@ u32* const RFB1 = (u32*)0x00010000;
 u32* const LFB2 = (u32*)0x00008000;
 u32* const RFB2 = (u32*)0x00018000;
 
-vector3d xProduct,rotate3d;
+vector3d xProduct;
 
 //graphing variables
 u16 dx, dy;
@@ -60,6 +62,7 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale);
 3d Calculations/Functions
 *********************************************************/
 s32 dotProduct(vector3d* v1, vector3d* v2);
+s32 isqrt(s32 num);
 void crossProduct(vector3d* v1, vector3d* v2);
 void matrix3dxVertex(vector3d* v,matrix3d m,vector3d* o);
 void matrix3dxMatrix3d(matrix3d m1, matrix3d m2, matrix3d n);
@@ -67,8 +70,10 @@ void rotateMatrixX(matrix3d m, s32 angle);
 void rotateMatrixY(matrix3d m, s32 angle);
 void rotateMatrixZ(matrix3d m, s32 angle);
 void translateMatrix(matrix3d m, s32 x, s32 y, s32 z);
+void translateCameraMatrix(matrix3d m, s32 x, s32 y, s32 z);
 void scaleMatrix(matrix3d m,s32 sx, s32 sy, s32 sz);
 void copyMatrix(matrix3d m1, matrix3d m2);
+void normalizeVector(vector3d* v, vector3d* n);
 /********************************************************/
 
 /*********************************************************

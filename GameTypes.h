@@ -34,5 +34,13 @@ typedef struct{
 	const s32* data;//pointer to data array
 } object;
 
+typedef struct{
+	vector3d position;
+	vector3d target;
+	s32 rx;
+	s32 ry;
+	s32 rz;
+} camera;
+
 typedef s32 matrix3d[4][4];//transformation matrix
 #endif

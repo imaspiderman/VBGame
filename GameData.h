@@ -11,6 +11,7 @@ matrix3d m_scale3d;
 matrix3d m_rotate3d_x;
 matrix3d m_rotate3d_y;
 matrix3d m_rotate3d_z;
+matrix3d m_camera3d;
 matrix3d m_world3d;
 
 /*********************

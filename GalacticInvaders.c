@@ -118,13 +118,13 @@ void moveObject(object* o, u8 d){
 	//to divide.
 	
 	//(-eyex*z)/eyez = xmin
-	o->c_min_x = (-EYE_X*o->wz)>>7;
+	o->c_min_x = NUM_SCALE_DN((-EYE_X*o->wz));
 	//(-eyey*z)/eyez = ymin
-	o->c_min_y = (-EYE_Y*o->wz)>>7;
+	o->c_min_y = NUM_SCALE_DN((-EYE_Y*o->wz));
 	//((screen_max-eyex)/eyez) * z + eyex = xmax
-	o->c_max_x = ((SCREEN_WIDTH-EYE_X)>>7) * o->wz + EYE_X;
+	o->c_max_x = NUM_SCALE_DN((SCREEN_WIDTH-EYE_X)) * o->wz + EYE_X;
 	//((screen_max-eyey)/eyez) * z + eyey = ymax
-	o->c_max_y = (((SCREEN_HEIGHT-EYE_Y)>>7==0)?(1):(SCREEN_HEIGHT-EYE_Y))* o->wz + EYE_Y;
+	o->c_max_y = ((NUM_SCALE_DN((SCREEN_HEIGHT-EYE_Y))==0)?(1):(SCREEN_HEIGHT-EYE_Y))* o->wz + EYE_Y;
 	o->c_min_z = EYE_Z;
 	o->c_max_z = 10000;
 	
@@ -213,10 +213,12 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		//crossProduct(va,vb);//fills (vector3d)xProduct
 		//dotp=dotProduct(cameraToPoly,xProduct);
 		//if visible dotp will be > 0
+		/*
 		if(dotp<0) {
 			i+=9;
 			continue;
 		}
+		*/
 		drawLine(v1,v2,3,o);
 		drawLine(v2,v3,3,o);
 		drawLine(v3,v1,3,o);
@@ -248,17 +250,17 @@ void initObjects(){
 Matrix multiplication function
 ********************************/
 void matrix3dxVertex(vector3d* v, matrix3d m, vector3d* o){	
-	o->x = ((v->x*m[0][0])>>7) +
-	       ((v->y*m[1][0])>>7) +
-	       ((v->z*m[2][0])>>7);
+	o->x = NUM_SCALE_DN((v->x*m[0][0])) +
+	       NUM_SCALE_DN((v->y*m[1][0])) +
+	       NUM_SCALE_DN((v->z*m[2][0]));
 	      
-	o->y = ((v->x*m[0][1])>>7) +
-	       ((v->y*m[1][1])>>7) +
-	       ((v->z*m[2][1])>>7);
+	o->y = NUM_SCALE_DN((v->x*m[0][1])) +
+	       NUM_SCALE_DN((v->y*m[1][1])) +
+	       NUM_SCALE_DN((v->z*m[2][1]));
 	      
-	o->z = ((v->x*m[0][2])>>7) +
-	       ((v->y*m[1][2])>>7) +
-	       ((v->z*m[2][2])>>7);
+	o->z = NUM_SCALE_DN((v->x*m[0][2])) +
+	       NUM_SCALE_DN((v->y*m[1][2])) +
+	       NUM_SCALE_DN((v->z*m[2][2]));
 }
 
 /************************************
@@ -273,7 +275,7 @@ void matrix3dxMatrix3d(matrix3d m1, matrix3d m2, matrix3d n){
 	for(i=0;i<4;i++){
 		for(j=0;j<4;j++){
 			for(k=0;k<4;k++){
-				t+=((m2[k][j])*(m1[i][k]))>>7;
+				t+=NUM_SCALE_DN((m2[k][j])*(m1[i][k]));
 			}
 			n[r][c]=t;
 			c++;
@@ -303,13 +305,13 @@ void rotateMatrixZ(matrix3d m,s32 angle){
 	
 	m[2][0]=0;
 	m[2][1]=0;
-	m[2][2]=128;
+	m[2][2]=NUM_SCALE_UP(1);
 	m[2][3]=0;
 	
 	m[3][0]=0;
 	m[3][1]=0;
 	m[3][2]=0;
-	m[3][3]=128;
+	m[3][3]=NUM_SCALE_UP(1);
 }
 
 /*******************************
@@ -324,7 +326,7 @@ void rotateMatrixY(matrix3d m,s32 angle){
 	m[0][3]=0;
 	
 	m[1][0]=0;
-	m[1][1]=128;
+	m[1][1]=NUM_SCALE_UP(1);
 	m[1][2]=0;
 	m[1][3]=0;
 	
@@ -336,7 +338,7 @@ void rotateMatrixY(matrix3d m,s32 angle){
 	m[3][0]=0;
 	m[3][1]=0;
 	m[3][2]=0;
-	m[3][3]=128;
+	m[3][3]=NUM_SCALE_UP(1);
 }
 
 /*******************************
@@ -345,7 +347,7 @@ angle is in degrees.
 *******************************/
 void rotateMatrixX(matrix3d m,s32 angle){
 	angle = (angle<0)?(360+angle):(angle);
-	m[0][0]=128;
+	m[0][0]=NUM_SCALE_UP(1);
 	m[0][1]=0;
 	m[0][2]=0;
 	m[0][3]=0;
@@ -363,32 +365,61 @@ void rotateMatrixX(matrix3d m,s32 angle){
 	m[3][0]=0;
 	m[3][1]=0;
 	m[3][2]=0;
-	m[3][3]=128;
+	m[3][3]=NUM_SCALE_UP(1);
 }
 
 /*********************************
 Fills the translation matrix
 *********************************/
 void translateMatrix(matrix3d m, s32 x, s32 y, s32 z){
-	m[0][0]=128;
+	m[0][0]=NUM_SCALE_UP(1);
 	m[0][1]=0;
 	m[0][2]=0;
 	m[0][3]=(x);
 	
 	m[1][0]=0;
-	m[1][1]=128;
+	m[1][1]=NUM_SCALE_UP(1);
 	m[1][1]=0;
 	m[1][1]=(y);
 	
 	m[2][0]=0;
 	m[2][1]=0;
-	m[2][2]=128;
+	m[2][2]=NUM_SCALE_UP(1);
 	m[2][3]=(z);
 	
 	m[3][0]=0;
 	m[3][1]=0;
 	m[3][2]=0;
-	m[3][3]=128;
+	m[3][3]=NUM_SCALE_UP(1);
+	
+	
+}
+
+/*********************************
+Fills the camera translation matrix.
+Same as regular translate except all
+axis scaled by -1.
+*********************************/
+void translateCameraMatrix(matrix3d m, s32 x, s32 y, s32 z){
+	m[0][0]=NUM_SCALE_UP(1);
+	m[0][1]=0;
+	m[0][2]=0;
+	m[0][3]=(-x);
+	
+	m[1][0]=0;
+	m[1][1]=NUM_SCALE_UP(1);
+	m[1][1]=0;
+	m[1][1]=(-y);
+	
+	m[2][0]=0;
+	m[2][1]=0;
+	m[2][2]=NUM_SCALE_UP(1);
+	m[2][3]=(-z);
+	
+	m[3][0]=0;
+	m[3][1]=0;
+	m[3][2]=0;
+	m[3][3]=NUM_SCALE_UP(1);
 	
 	
 }
@@ -397,17 +428,17 @@ void translateMatrix(matrix3d m, s32 x, s32 y, s32 z){
 Fills the scale matrix
 ********************************/
 void scaleMatrix(matrix3d m,s32 sx, s32 sy, s32 sz){
-	m[0][0]=sx<<7;
+	m[0][0]=NUM_SCALE_UP(sx);
 	m[0][1]=0;
 	m[0][2]=0;
 	
 	m[1][0]=0;
-	m[1][1]=sy<<7;
+	m[1][1]=NUM_SCALE_UP(sy);
 	m[1][2]=0;
 	
 	m[2][0]=0;
 	m[2][1]=0;
-	m[2][2]=sz<<7;
+	m[2][2]=NUM_SCALE_UP(sz);
 }
 
 void vbInit(){
@@ -813,7 +844,6 @@ void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
 /*******************************
 Dot Product function for determining
 the angle between two vectors.
-Used for backface culling.
 *******************************/
 s32 dotProduct(vector3d* v1, vector3d* v2){
 	s32 r;
@@ -822,8 +852,7 @@ s32 dotProduct(vector3d* v1, vector3d* v2){
 }
 
 /*******************************
-Cross Product function for determining
-the normal of a polygon.
+Cross Product function
 Sets the values of xProduct[x,y,z]
 *******************************/
 void crossProduct(vector3d* v1,vector3d* v2){
@@ -844,4 +873,40 @@ void screenControl(){
 	VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] | XPEN;
 	while(!(VIP_REGS[XPSTTS] & pgflip));
 	VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] & XPENOFF;//Disable drawing
+}
+
+/***********************************
+This function normalizes or creates
+a unit vector.
+***********************************/
+void normalizeVector(vector3d* v, vector3d* n){
+	s32 length;
+	length=isqrt((v->x*v->x)+(v->y*v->y)+(v->z*v->z));
+	n->x = v->x/length;
+	n->y = v->y/length;
+	n->z = v->z/length;
+}
+
+/*************************************
+Square root function based on integers
+This came from wikipedia
+*************************************/
+s32 isqrt(s32 num) {
+    s32 res = 0;
+    s32 bit = 1 << 30; // The second-to-top bit is set: 1L<<30 for long
+ 
+    // "bit" starts at the highest power of four <= the argument.
+    while (bit > num)
+        bit >>= 2;
+ 
+    while (bit != 0) {
+        if (num >= res + bit) {
+            num -= res + bit;
+            res = (res >> 1) + bit;
+        }
+        else res >>= 1;
+        
+        bit >>= 2;
+    }
+    return res;
 }
