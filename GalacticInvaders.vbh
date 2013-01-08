@@ -1,0 +1,10 @@
+	.ascii "Gregs First Rom     "
+	.byte 0, 0, 0, 0, 0
+	.ascii "GS"
+	.ascii "GS01"
+	.byte 0
+	.fill 496, 1, 0xFF
+	movhi 0x0700,r0,r31
+	movea 0x0000,r31,r31
+	jmp [r31]
+	.balign 16, 0
