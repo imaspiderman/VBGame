@@ -70,28 +70,28 @@ void moveCrossHairs(){
 void handleInput(){
 	buttons = vbReadPad();
 	if(K_LL & buttons){
-		starFoxShip->rotation.z-=ROTATION_SPEED;
-		if(starFoxShip->rotation.z<=-360 || starFoxShip->rotation.z>=360) starFoxShip->rotation.z=0;
+		starFoxShip->rz-=ROTATION_SPEED;
+		if(starFoxShip->rz<=-360 || starFoxShip->rz>=360) starFoxShip->rz=0;
 	}
 	if(K_LR & buttons){
-		starFoxShip->rotation.z+=ROTATION_SPEED;
-		if(starFoxShip->rotation.z>=360 || starFoxShip->rotation.z<=-360) starFoxShip->rotation.z=0;
+		starFoxShip->rz+=ROTATION_SPEED;
+		if(starFoxShip->rz>=360 || starFoxShip->rz<=-360) starFoxShip->rz=0;
 	}
 	if(K_LU & buttons){
-		starFoxShip->rotation.x-=ROTATION_SPEED;
-		if(starFoxShip->rotation.x<=-360 || starFoxShip->rotation.x>=360) starFoxShip->rotation.x=0;
+		starFoxShip->rx-=ROTATION_SPEED;
+		if(starFoxShip->rx<=-360 || starFoxShip->rx>=360) starFoxShip->rx=0;
 	}
 	if(K_LD & buttons){
-		starFoxShip->rotation.x+=ROTATION_SPEED;
-		if(starFoxShip->rotation.x>=360 || starFoxShip->rotation.x<=-360) starFoxShip->rotation.x=0;
+		starFoxShip->rx+=ROTATION_SPEED;
+		if(starFoxShip->rx>=360 || starFoxShip->rx<=-360) starFoxShip->rx=0;
 	}
 	if(K_RL & buttons){
-		starFoxShip->rotation.y-=ROTATION_SPEED;
-		if(starFoxShip->rotation.y<=-360 || starFoxShip->rotation.y>=360) starFoxShip->rotation.y=0;
+		starFoxShip->ry-=ROTATION_SPEED;
+		if(starFoxShip->ry<=-360 || starFoxShip->ry>=360) starFoxShip->ry=0;
 	}
 	if(K_RR & buttons){
-		starFoxShip->rotation.y+=ROTATION_SPEED;
-		if(starFoxShip->rotation.y>=360 || starFoxShip->rotation.y<=-360) starFoxShip->rotation.y=0;
+		starFoxShip->ry+=ROTATION_SPEED;
+		if(starFoxShip->ry>=360 || starFoxShip->ry<=-360) starFoxShip->ry=0;
 	}
 }
 
@@ -104,9 +104,9 @@ void moveObject(object* o, u8 d){
 	4=move in z direction
 	8=constrain to screen
 	************************/
-	o->world.x+=(d&0x01)?(o->speed.x):(0);	
-	o->world.y+=(d&0x02)?(o->speed.y):(0);
-	o->world.z+=(d&0x04)?(o->speed.z):(0);
+	o->wx+=(d&0x01)?(o->speed.x):(0);	
+	o->wy+=(d&0x02)?(o->speed.y):(0);
+	o->wz+=(d&0x04)?(o->speed.z):(0);
 	
 	//Calculate clip bounds if object moved
 	//This is not a true clip function but should
@@ -118,25 +118,25 @@ void moveObject(object* o, u8 d){
 	//to divide.
 	
 	//(-eyex*z)/eyez = xmin
-	o->min_clip.x = NUM_SCALE_DN((-EYE_X*o->world.z));
+	o->c_min_x = NUM_SCALE_DN((-EYE_X*o->wz));
 	//(-eyey*z)/eyez = ymin
-	o->min_clip.y = NUM_SCALE_DN((-EYE_Y*o->world.z));
+	o->c_min_y = NUM_SCALE_DN((-EYE_Y*o->wz));
 	//((screen_max-eyex)/eyez) * z + eyex = xmax
-	o->max_clip.x = NUM_SCALE_DN((SCREEN_WIDTH-EYE_X)) * o->world.z + EYE_X;
+	o->c_max_x = NUM_SCALE_DN((SCREEN_WIDTH-EYE_X)) * o->wz + EYE_X;
 	//((screen_max-eyey)/eyez) * z + eyey = ymax
-	o->max_clip.y = ((NUM_SCALE_DN((SCREEN_HEIGHT-EYE_Y))==0)?(1):(SCREEN_HEIGHT-EYE_Y))* o->world.z + EYE_Y;
-	o->min_clip.z = EYE_Z;
-	o->max_clip.z = 10000;
+	o->c_max_y = ((NUM_SCALE_DN((SCREEN_HEIGHT-EYE_Y))==0)?(1):(SCREEN_HEIGHT-EYE_Y))* o->wz + EYE_Y;
+	o->c_min_z = EYE_Z;
+	o->c_max_z = 10000;
 	
 	/*
 	if(d&0x08){
-		s32 x = ((o->world.x-EYE_X)*EYE_Z)/(EYE_Z+o->world.z)+EYE_X;
-		s32 y = ((o->world.y-EYE_Y)*EYE_Z)/(EYE_Z+o->world.z)+EYE_Y;
+		s32 x = ((o->wx-EYE_X)*EYE_Z)/(EYE_Z+o->wz)+EYE_X;
+		s32 y = ((o->wy-EYE_Y)*EYE_Z)/(EYE_Z+o->wz)+EYE_Y;
 		
-		if(x<0 && d&0x01)  o->world.x=sLeft;
-		if(x>SCREEN_WIDTH && d&0x01) o->world.x=sRight;
-		if(y<0 && d&0x02) o->world.y=sTop;
-		if(y>SCREEN_HEIGHT && d&0x02) o->world.y=sBottom;
+		if(x<0 && d&0x01)  o->wx=sLeft;
+		if(x>SCREEN_WIDTH && d&0x01) o->wx=sRight;
+		if(y<0 && d&0x02) o->wy=sTop;
+		if(y>SCREEN_HEIGHT && d&0x02) o->wy=sBottom;
 	}
 	*/
 }
@@ -159,12 +159,12 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 	vector3d v1,v2,v3;
 	vector3d vt,vt2;
 	matrix3d m_temp;
-	o->p = ((o->world.z-EYE_Z)>>PARALLAX_SHIFT);
+	o->p = ((o->wz-EYE_Z)>>PARALLAX_SHIFT);
 	
-	translateMatrix(m_translate3d, o->world.x, o->world.y, o->world.z);
-	rotateMatrixX(m_rotate3d_x,o->rotation.x);
-	rotateMatrixY(m_rotate3d_y,o->rotation.y);
-	rotateMatrixZ(m_rotate3d_z,o->rotation.z);
+	translateMatrix(m_translate3d, o->wx, o->wy, o->wz);
+	rotateMatrixX(m_rotate3d_x,o->rx);
+	rotateMatrixY(m_rotate3d_y,o->ry);
+	rotateMatrixZ(m_rotate3d_z,o->rz);
 	scaleMatrix(m_scale3d,xscale,yscale,zscale);
 	
 	matrix3dxMatrix3d(m_scale3d,m_translate3d,m_temp);
@@ -230,12 +230,12 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 
 void initObjects(){
 	gameObjectsIdx=0;
-	gameObjects[gameObjectsIdx].world.x=EYE_X;
-	gameObjects[gameObjectsIdx].world.y=EYE_Y;
-	gameObjects[gameObjectsIdx].world.z=EYE_Z+100;
-	gameObjects[gameObjectsIdx].rotation.x=0;
-	gameObjects[gameObjectsIdx].rotation.y=0;
-	gameObjects[gameObjectsIdx].rotation.z=0;
+	gameObjects[gameObjectsIdx].wx=EYE_X;
+	gameObjects[gameObjectsIdx].wy=EYE_Y;
+	gameObjects[gameObjectsIdx].wz=EYE_Z+100;
+	gameObjects[gameObjectsIdx].rx=0;
+	gameObjects[gameObjectsIdx].ry=0;
+	gameObjects[gameObjectsIdx].rz=0;
 	gameObjects[gameObjectsIdx].p=0;
 	gameObjects[gameObjectsIdx].speed.x=0;
 	gameObjects[gameObjectsIdx].speed.y=0;
@@ -401,7 +401,27 @@ Same as regular translate except all
 axis scaled by -1.
 *********************************/
 void translateCameraMatrix(matrix3d m, s32 x, s32 y, s32 z){
-	translateMatrix(m,-x,-y,-z);
+	m[0][0]=NUM_SCALE_UP(1);
+	m[0][1]=0;
+	m[0][2]=0;
+	m[0][3]=(-x);
+	
+	m[1][0]=0;
+	m[1][1]=NUM_SCALE_UP(1);
+	m[1][1]=0;
+	m[1][1]=(-y);
+	
+	m[2][0]=0;
+	m[2][1]=0;
+	m[2][2]=NUM_SCALE_UP(1);
+	m[2][3]=(-z);
+	
+	m[3][0]=0;
+	m[3][1]=0;
+	m[3][2]=0;
+	m[3][3]=NUM_SCALE_UP(1);
+	
+	
 }
 
 /********************************
@@ -421,121 +441,6 @@ void scaleMatrix(matrix3d m,s32 sx, s32 sy, s32 sz){
 	m[2][2]=NUM_SCALE_UP(sz);
 }
 
-/***********************************
-Sets the direction of the view for
-the camera
-***********************************/
-void viewMatrix(matrix3d m, vector3d* cameraPos, vector3d* target){
-	vector3d direction,right,up;
-	//Up vector. Camera does not rotate so we'll hard code it.
-	up.x=0;
-	up.y=NUM_SCALE_UP(1);
-	up.z=0;
-	vector3dSub(target,cameraPos,&direction);
-	normalizeVector(&direction, &direction);
-	normalizeVector(&right,&right);
-	crossProduct(&direction,&up,&right);
-	
-	m[0][0]=right.x;
-	m[0][1]=right.y;
-	m[0][2]=right.z;
-	m[0][3]=dotProduct(&right,cameraPos);
-	
-	m[1][0]=up.x;
-	m[1][1]=up.y;
-	m[1][2]=up.z;
-	m[1][3]=0;
-	
-	m[2][0]=direction.x;
-	m[2][1]=direction.y;
-	m[2][2]=direction.z;
-	m[2][3]=0;
-	
-	m[3][0]=0;
-	m[3][1]=0;
-	m[3][2]=0;
-	m[3][3]=NUM_SCALE_UP(1);
-}
-
-/*******************************
-Dot Product function for determining
-the angle between two vectors.
-*******************************/
-s32 dotProduct(vector3d* v1, vector3d* v2){
-	s32 r;
-	r = (v1->x*v2->x)+(v1->y*v2->y)+(v1->z*v2->z);
-	return r;
-}
-
-/*******************************
-Cross Product function
-*******************************/
-void crossProduct(vector3d* v1,vector3d* v2, vector3d* n){
-	n->x = (v1->y*v2->z)-(v1->z*v2->y);
-	n->y = (v1->z*v2->x)-(v1->x*v2->z);
-	n->z = (v1->x*v2->y)-(v1->y*v2->x);
-}
-
-/***********************************
-This function normalizes or creates
-a unit vector.
-***********************************/
-void normalizeVector(vector3d* v, vector3d* n){
-	s32 length;
-	length=isqrt((v->x*v->x)+(v->y*v->y)+(v->z*v->z));
-	n->x = NUM_SCALE_UP(v->x/length);
-	n->y = NUM_SCALE_UP(v->y/length);
-	n->z = NUM_SCALE_UP(v->z/length);
-}
-
-/****************************************
-This function adds to vectors together and
-returns the new vector.
-****************************************/
-void vector3dAdd(vector3d* v1, vector3d* v2, vector3d* n){
-	n->x = v1->x+v2->x;
-	n->y = v1->y+v2->y;
-	n->z = v1->z+v2->z;
-}
-
-/****************************************
-This function subtracts 2 vectors
-v2 is subtracted from v1 returning n
-****************************************/
-void vector3dSub(vector3d* v1, vector3d* v2, vector3d* n){
-	v2->x=~v2->x+1;
-	v2->y=~v2->y+1;
-	v2->z=~v2->z+1;
-	vector3dAdd(v1,v2,n);
-}
-
-/*************************************
-Square root function based on integers
-This came from wikipedia
-*************************************/
-s32 isqrt(s32 num) {
-    s32 res = 0;
-    s32 bit = 1 << 30; // The second-to-top bit is set: 1L<<30 for long
- 
-    // "bit" starts at the highest power of four <= the argument.
-    while (bit > num)
-        bit >>= 2;
- 
-    while (bit != 0) {
-        if (num >= res + bit) {
-            num -= res + bit;
-            res = (res >> 1) + bit;
-        }
-        else res >>= 1;
-        
-        bit >>= 2;
-    }
-    return res;
-}
-
-/***************************************
-Standard Procedure for initializing the VB.
-***************************************/
 void vbInit(){
 	vbDisplayOn ();
 	vbSetColTable ();
@@ -547,9 +452,6 @@ void vbInit(){
 	HW_REGS[WCR] = 1;
 }
 
-/***************************************
-Clears a frame buffer.
-***************************************/
 void ClearFrameBuffer(u32* buf){
 	u16 i;
 	for(i=0;i<0x2000;i++){
@@ -654,107 +556,107 @@ Bresenham Line Algorithm
 void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
 	s32 vx,vy,vz,vx2,vy2,vz2;
 
-	//vx=(v1.x<o->min_clip.x)?(o->min_clip.x):(v1.x);
-	//vx=(vx>o->max_clip.x)?(o->max_clip.x):(vx);
-	//vx2=(v2.x<o->min_clip.x)?(o->min_clip.x):(v2.x);
-	//vx2=(vx2>o->max_clip.x)?(o->max_clip.x):(vx2);
+	//vx=(v1.x<o->c_min_x)?(o->c_min_x):(v1.x);
+	//vx=(vx>o->c_max_x)?(o->c_max_x):(vx);
+	//vx2=(v2.x<o->c_min_x)?(o->c_min_x):(v2.x);
+	//vx2=(vx2>o->c_max_x)?(o->c_max_x):(vx2);
 	asm(
 		"mov %2,r5\n"//v1.x
-		"mov %3,r6\n"//o->min_clip.x
+		"mov %3,r6\n"//o->c_min_x
 		"mov %4,r7\n"//o->c-max_x
 		"mov %5,r9\n"//v2.x
 		"mov r6,r8\n"
-		"cmp r5,r6\n"//o->min_clip.x > v1.x
+		"cmp r5,r6\n"//o->c_min_x > v1.x
 		"bge _drawline5\n"
 		"mov r5,r8\n"
 		"_drawline5:\n"
-		"cmp r8,r7\n"//o->max_clip.x > v1.x
+		"cmp r8,r7\n"//o->c_max_x > v1.x
 		"bge _drawline6\n"
 		"mov r7,r8\n"
 		"_drawline6:\n"
 		"mov r8,%0\n"
 		"mov r6,r8\n"
-		"cmp r9,r8\n"//o->min_clip.x > v2.x
+		"cmp r9,r8\n"//o->c_min_x > v2.x
 		"bge _drawline7\n"
 		"mov r9,r8\n"
 		"_drawline7:\n"
-		"cmp r8,r7\n"//o->max_clip.x > v2.x
+		"cmp r8,r7\n"//o->c_max_x > v2.x
 		"bge _drawline8\n"
 		"mov r7,r8\n"
 		"_drawline8:\n"
 		"mov r8,%1\n"
 		:"=r"(vx),"=r"(vx2)
-		:"r"(v1.x),"r"(o->min_clip.x),"r"(o->max_clip.x),"r"(v2.x)
+		:"r"(v1.x),"r"(o->c_min_x),"r"(o->c_max_x),"r"(v2.x)
 		:"r5","r6","r7","r8"
 		);
 	
-	//vy=(v1.y<o->min_clip.y)?(o->min_clip.y):(v1.y);
-	//vy=(vy>o->max_clip.y)?(o->max_clip.y):(vy);
-	//vy2=(v2.y<o->min_clip.y)?(o->min_clip.y):(v2.y);
-	//vy2=(vy2>o->max_clip.y)?(o->max_clip.y):(vy2);
+	//vy=(v1.y<o->c_min_y)?(o->c_min_y):(v1.y);
+	//vy=(vy>o->c_max_y)?(o->c_max_y):(vy);
+	//vy2=(v2.y<o->c_min_y)?(o->c_min_y):(v2.y);
+	//vy2=(vy2>o->c_max_y)?(o->c_max_y):(vy2);
 	
 	asm(
 		"mov %2,r5\n"//v1.y
-		"mov %3,r6\n"//o->min_clip.y
+		"mov %3,r6\n"//o->c_min_y
 		"mov %4,r7\n"//o->c-max_y
 		"mov %5,r9\n"//v2.y
 		"mov r6,r8\n"
-		"cmp r5,r6\n"//o->min_clip.y > v1.y
+		"cmp r5,r6\n"//o->c_min_y > v1.y
 		"bge _drawline9\n"
 		"mov r5,r8\n"
 		"_drawline9:\n"
-		"cmp r8,r7\n"//o->max_clip.y > v1.y
+		"cmp r8,r7\n"//o->c_max_y > v1.y
 		"bge _drawline10\n"
 		"mov r7,r8\n"
 		"_drawline10:\n"
 		"mov r8,%0\n"
 		"mov r6,r8\n"
-		"cmp r9,r8\n"//o->min_clip.y > v2.y
+		"cmp r9,r8\n"//o->c_min_y > v2.y
 		"bge _drawline11\n"
 		"mov r9,r8\n"
 		"_drawline11:\n"
-		"cmp r8,r7\n"//o->max_clip.y > v2.y
+		"cmp r8,r7\n"//o->c_max_y > v2.y
 		"bge _drawline12\n"
 		"mov r7,r8\n"
 		"_drawline12:\n"
 		"mov r8,%1\n"
 		:"=r"(vy),"=r"(vy2)
-		:"r"(v1.y),"r"(o->min_clip.y),"r"(o->max_clip.y),"r"(v2.y)
+		:"r"(v1.y),"r"(o->c_min_y),"r"(o->c_max_y),"r"(v2.y)
 		:"r5","r6","r7","r8"
 		);
 	
-	//vz=(v1.z<o->min_clip.z)?(o->min_clip.z):(v1.z);
-	//vz=(vz>o->max_clip.z)?(o->max_clip.z):(vz);
-	//vz2=(v2.z<o->min_clip.z)?(o->min_clip.z):(v2.z);
-	//vz2=(vz2>o->max_clip.z)?(o->max_clip.z):(vz2);
+	//vz=(v1.z<o->c_min_z)?(o->c_min_z):(v1.z);
+	//vz=(vz>o->c_max_z)?(o->c_max_z):(vz);
+	//vz2=(v2.z<o->c_min_z)?(o->c_min_z):(v2.z);
+	//vz2=(vz2>o->c_max_z)?(o->c_max_z):(vz2);
 	
 	asm(
 		"mov %2,r5\n"//v1.z
-		"mov %3,r6\n"//o->min_clip.z
+		"mov %3,r6\n"//o->c_min_z
 		"mov %4,r7\n"//o->c-max_z
 		"mov %5,r9\n"//v2.z
 		"mov r6,r8\n"
-		"cmp r5,r6\n"//o->min_clip.z > v1.z
+		"cmp r5,r6\n"//o->c_min_z > v1.z
 		"bge _drawline13\n"
 		"mov r5,r8\n"
 		"_drawline13:\n"
-		"cmp r8,r7\n"//o->max_clip.z > v1.z
+		"cmp r8,r7\n"//o->c_max_z > v1.z
 		"bge _drawline14\n"
 		"mov r7,r8\n"
 		"_drawline14:\n"
 		"mov r8,%0\n"
 		"mov r6,r8\n"
-		"cmp r9,r8\n"//o->min_clip.z > v2.z
+		"cmp r9,r8\n"//o->c_min_z > v2.z
 		"bge _drawline15\n"
 		"mov r9,r8\n"
 		"_drawline15:\n"
-		"cmp r8,r7\n"//o->max_clip.z > v2.z
+		"cmp r8,r7\n"//o->c_max_z > v2.z
 		"bge _drawline16\n"
 		"mov r7,r8\n"
 		"_drawline16:\n"
 		"mov r8,%1\n"
 		:"=r"(vz),"=r"(vz2)
-		:"r"(v1.z),"r"(o->min_clip.z),"r"(o->max_clip.z),"r"(v2.z)
+		:"r"(v1.z),"r"(o->c_min_z),"r"(o->c_max_z),"r"(v2.z)
 		:"r5","r6","r7","r8"
 		);
 	//Adjust values
@@ -940,6 +842,26 @@ void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
 }
 
 /*******************************
+Dot Product function for determining
+the angle between two vectors.
+*******************************/
+s32 dotProduct(vector3d* v1, vector3d* v2){
+	s32 r;
+	r = (v1->x*v2->x)+(v1->y*v2->y)+(v1->z*v2->z);
+	return r;
+}
+
+/*******************************
+Cross Product function
+Sets the values of xProduct[x,y,z]
+*******************************/
+void crossProduct(vector3d* v1,vector3d* v2){
+	xProduct.x = (v1->y*v2->z)-(v1->z*v2->y);
+	xProduct.y = (v1->z*v2->x)-(v1->x*v2->z);
+	xProduct.z = (v1->x*v2->y)-(v1->y*v2->x);
+}
+
+/*******************************
 Controls the timing of the screen
 refresh. Borrowed from the Hunter game
 written by DanB.
@@ -953,4 +875,38 @@ void screenControl(){
 	VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] & XPENOFF;//Disable drawing
 }
 
+/***********************************
+This function normalizes or creates
+a unit vector.
+***********************************/
+void normalizeVector(vector3d* v, vector3d* n){
+	s32 length;
+	length=isqrt((v->x*v->x)+(v->y*v->y)+(v->z*v->z));
+	n->x = v->x/length;
+	n->y = v->y/length;
+	n->z = v->z/length;
+}
 
+/*************************************
+Square root function based on integers
+This came from wikipedia
+*************************************/
+s32 isqrt(s32 num) {
+    s32 res = 0;
+    s32 bit = 1 << 30; // The second-to-top bit is set: 1L<<30 for long
+ 
+    // "bit" starts at the highest power of four <= the argument.
+    while (bit > num)
+        bit >>= 2;
+ 
+    while (bit != 0) {
+        if (num >= res + bit) {
+            num -= res + bit;
+            res = (res >> 1) + bit;
+        }
+        else res >>= 1;
+        
+        bit >>= 2;
+    }
+    return res;
+}
