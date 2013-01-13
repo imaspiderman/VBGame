@@ -161,6 +161,8 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 	matrix3d m_temp;
 	o->p = ((o->wz-EYE_Z)>>PARALLAX_SHIFT);
 	
+	worldMatrix(m_world3d,o,xscale,yscale,zscale);
+	/*
 	translateMatrix(m_translate3d, o->wx, o->wy, o->wz);
 	rotateMatrixX(m_rotate3d_x,o->rx);
 	rotateMatrixY(m_rotate3d_y,o->ry);
@@ -175,7 +177,8 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 	copyMatrix(m_temp,m_world3d);
 	matrix3dxMatrix3d(m_world3d,m_rotate3d_z,m_temp);
 	copyMatrix(m_temp,m_world3d);
-
+	*/
+	
 	_CacheEnable
 	i=0;
 	while(i<o->dataSize){
@@ -252,15 +255,18 @@ Matrix multiplication function
 void matrix3dxVertex(vector3d* v, matrix3d m, vector3d* o){	
 	o->x = NUM_SCALE_DN((v->x*m[0][0])) +
 	       NUM_SCALE_DN((v->y*m[1][0])) +
-	       NUM_SCALE_DN((v->z*m[2][0]));
+	       NUM_SCALE_DN((v->z*m[2][0])) +
+	       m[3][0];
 	      
 	o->y = NUM_SCALE_DN((v->x*m[0][1])) +
 	       NUM_SCALE_DN((v->y*m[1][1])) +
-	       NUM_SCALE_DN((v->z*m[2][1]));
+	       NUM_SCALE_DN((v->z*m[2][1])) +
+	       m[3][1];
 	      
 	o->z = NUM_SCALE_DN((v->x*m[0][2])) +
 	       NUM_SCALE_DN((v->y*m[1][2])) +
-	       NUM_SCALE_DN((v->z*m[2][2]));
+	       NUM_SCALE_DN((v->z*m[2][2])) +
+	       m[3][2];
 }
 
 /************************************
@@ -285,6 +291,40 @@ void matrix3dxMatrix3d(matrix3d m1, matrix3d m2, matrix3d n){
 		c=0;
 	}
 	
+}
+
+/**********************************************
+This is a combination of all necessary matrices.
+**********************************************/
+void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz){
+	s32 ax,ay,az;
+	ax = (o->rx<0)?(360+o->rx):(o->rx);
+	ay = (o->ry<0)?(360+o->ry):(o->ry);
+	az = (o->rz<0)?(360+o->rz):(o->rz);
+	
+	m[0][0]=NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sx)*cosine[ay]*cosine[az]));
+	m[0][1]=NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sx)*cosine[ay]*sine[az]));
+	m[0][2]=NUM_SCALE_DN(NUM_SCALE_UP(sx)*-(sine[ay]));
+	m[0][3]=o->wx;
+	
+	m[1][0]=NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sy)*sine[ax]*sine[ay]*cosine[az]))) +
+	        NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sy)*cosine[ax]*-sine[az]));
+	m[1][1]=NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sy)*cosine[ax]*cosine[az])) +
+	        NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sy)*sine[ax]*sine[ay]*sine[az])));
+	m[1][2]=NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sy)*sine[ax]*cosine[ay]));
+	m[1][3]=o->wy;
+	
+	m[2][0]=NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sz)*cosine[ax]*sine[ay]*cosine[az]))) +
+	        NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sz)*-sine[ax]*-sine[az]));
+	m[2][1]=NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sz)*-sine[ax]*cosine[az])) +
+	        NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sz)*cosine[ax]*sine[ay]*sine[az])));
+	m[2][2]=NUM_SCALE_DN(NUM_SCALE_DN(NUM_SCALE_UP(sz)*cosine[ax]*cosine[ay]));
+	m[2][3]=o->wz;
+	
+	m[3][0]=0;
+	m[3][1]=0;
+	m[3][2]=0;
+	m[3][3]=1;
 }
 
 /*******************************

@@ -18,8 +18,8 @@ Defines
 #define PARALLAX_MAX 31
 #define PARALLAX_SHIFT 8
 #define ROTATION_SPEED 6
-#define NUM_SCALE_UP(X) (X<<7)
-#define NUM_SCALE_DN(X) (X>>7)
+#define NUM_SCALE_UP(X) ((X)<<7)
+#define NUM_SCALE_DN(X) ((X)>>7)
 /*******************************
 Variables
 *******************************/
@@ -72,6 +72,7 @@ void rotateMatrixZ(matrix3d m, s32 angle);
 void translateMatrix(matrix3d m, s32 x, s32 y, s32 z);
 void translateCameraMatrix(matrix3d m, s32 x, s32 y, s32 z);
 void scaleMatrix(matrix3d m,s32 sx, s32 sy, s32 sz);
+void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz);
 void copyMatrix(matrix3d m1, matrix3d m2);
 void normalizeVector(vector3d* v, vector3d* n);
 /********************************************************/
