@@ -30,7 +30,7 @@ int main(){
 			}
 		}
 		*/
-		moveObject(starFoxShip,15);
+		moveObject(starFoxShip,7);
 		handleInput();
 		drawObject(starFoxShip,2,2,2);
 		screenControl();
@@ -69,29 +69,23 @@ void moveCrossHairs(){
 
 void handleInput(){
 	buttons = vbReadPad();
+	if(K_RD & buttons){
+		starFoxShip->world.z-=F_NUM_UP(20);
+	}
+	if(K_RU & buttons){
+		starFoxShip->world.z+=F_NUM_UP(20);
+	}
 	if(K_LL & buttons){
-		starFoxShip->rotation.z-=ROTATION_SPEED;
-		if(starFoxShip->rotation.z<=-F_NUM_UP(360) || starFoxShip->rotation.z>=F_NUM_UP(360)) starFoxShip->rotation.z=0;
+		starFoxShip->world.x-=F_NUM_UP(5);
 	}
 	if(K_LR & buttons){
-		starFoxShip->rotation.z+=ROTATION_SPEED;
-		if(starFoxShip->rotation.z>=F_NUM_UP(360) || starFoxShip->rotation.z<=-F_NUM_UP(360)) starFoxShip->rotation.z=0;
-	}
-	if(K_LU & buttons){
-		starFoxShip->rotation.x-=ROTATION_SPEED;
-		if(starFoxShip->rotation.x<=-F_NUM_UP(360) || starFoxShip->rotation.x>=F_NUM_UP(360)) starFoxShip->rotation.x=0;
+		starFoxShip->world.x+=F_NUM_UP(5);
 	}
 	if(K_LD & buttons){
-		starFoxShip->rotation.x+=ROTATION_SPEED;
-		if(starFoxShip->rotation.x>=F_NUM_UP(360) || starFoxShip->rotation.x<=-F_NUM_UP(360)) starFoxShip->rotation.x=0;
+		starFoxShip->world.y-=F_NUM_UP(5);
 	}
-	if(K_RL & buttons){
-		starFoxShip->rotation.y-=ROTATION_SPEED;
-		if(starFoxShip->rotation.y<=-F_NUM_UP(360) || starFoxShip->rotation.y>=F_NUM_UP(360)) starFoxShip->rotation.y=0;
-	}
-	if(K_RR & buttons){
-		starFoxShip->rotation.y+=ROTATION_SPEED;
-		if(starFoxShip->rotation.y>=F_NUM_UP(360) || starFoxShip->rotation.y<=-F_NUM_UP(360)) starFoxShip->rotation.y=0;
+	if(K_LU & buttons){
+		starFoxShip->world.y+=F_NUM_UP(5);
 	}
 }
 
@@ -141,33 +135,12 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 	matrix3d m_temp;
 	o->p = ((F_NUM_DN(o->world.z)-cam.d)>>PARALLAX_SHIFT);
 	
-	//translateCameraMatrix(m_camera3d, o);
 	worldMatrix(m_world3d,o,xscale,yscale,zscale);
-	projectionMatrix(m_project3d);
+	//projectionMatrix(m_project3d);
 	
-	//matrix3dxMatrix3d(m_camera3d,m_world3d,m_temp);
-	//copyMatrix(m_temp,m_world3d);
-	matrix3dxMatrix3d(m_world3d,m_project3d,m_temp);
-	copyMatrix(m_temp,m_world3d);
-	
-	//translateMatrix(m_translate3d, o->world.x, o->world.y, o->world.z);
-	//rotateMatrixX(m_rotate3d_x,o->rotation.x);
-	//rotateMatrixY(m_rotate3d_y,o->rotation.y);
-	//rotateMatrixZ(m_rotate3d_z,o->rotation.z);
-	//scaleMatrix(m_scale3d,xscale,yscale,zscale);
-	
-	//matrix3dxMatrix3d(m_scale3d,m_rotate3d_x,m_temp);
-	//copyMatrix(m_temp,m_world3d);
-	//matrix3dxMatrix3d(m_world3d,m_rotate3d_y,m_temp);
-	//copyMatrix(m_temp,m_world3d);
-	//matrix3dxMatrix3d(m_world3d,m_rotate3d_z,m_temp);
-	//copyMatrix(m_temp,m_world3d);
-	//matrix3dxMatrix3d(m_world3d,m_translate3d,m_temp);
-	//copyMatrix(m_temp,m_world3d);
 	//matrix3dxMatrix3d(m_world3d,m_project3d,m_temp);
 	//copyMatrix(m_temp,m_world3d);
-	
-	
+		
 	_CacheEnable
 	i=0;
 	while(i<o->dataSize){
@@ -312,9 +285,9 @@ void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz){
 	m[2][2]=F_MUL(F_MUL(F_NUM_UP(sz),cosine[ax]),cosine[ay]);
 	m[2][3]=0;
 	
-	m[3][0]=F_NUM_UP(SCREEN_WIDTH>>1);
-	m[3][1]=F_NUM_UP(SCREEN_HEIGHT>>1);
-	m[3][2]=0;
+	m[3][0]=o->world.x;
+	m[3][1]=o->world.y;
+	m[3][2]=o->world.z;
 	m[3][3]=F_NUM_UP(1);
 }
 
@@ -398,12 +371,12 @@ void projectionMatrix(matrix3d m){
 	
 	m[2][0]=0;
 	m[2][1]=0;
-	m[2][2]=F_DIV(F_NUM_UP(FAR_Z),F_SUB(F_NUM_UP(FAR_Z),cam.d));
+	m[2][2]=F_DIV(F_ADD(F_NUM_UP(FAR_Z),cam.d),F_SUB(F_NUM_UP(FAR_Z),cam.d));
 	m[2][3]=F_NUM_UP(1);
 	
 	m[3][0]=0;
 	m[3][1]=0;
-	m[3][2]=F_DIV(F_MUL(cam.d,F_NUM_UP(FAR_Z)),(F_SUB(cam.d,F_NUM_UP(FAR_Z))));
+	m[3][2]=F_DIV((F_MUL(cam.d,F_NUM_UP(FAR_Z))<<1),(F_SUB(F_NUM_UP(FAR_Z),cam.d)));
 	m[3][3]=0;
 }
 
@@ -540,6 +513,8 @@ void inline drawPoint(s16 x, s16 y, u32 color, s16 p){
 	s32 loffset,roffset;
 	u8 yleft;
 	
+	if(x<0 || x>SCREEN_WIDTH || y<0 || y>SCREEN_HEIGHT) return;
+	
 	loffset = ((x-p)<<4) + (y>>4);
 	roffset = ((x+p)<<4) + (y>>4);
 	color &= 0x03;
@@ -562,19 +537,19 @@ Bresenham Line Algorithm
 void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
 	s32 vx,vy,vz,vx2,vy2,vz2;
 	//Scale everything back to integers
-	vx=F_NUM_DN(F_DIV(v1.x,v1.w));
-	vy=F_NUM_DN(F_DIV(v1.y,v1.w));
+	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(F_SUB(v1.x,cam.position.x),cam.d),F_ADD(F_ADD(cam.d,v1.z),cam.position.x)),F_NUM_UP(SCREEN_WIDTH>>1)));
+	vy=F_NUM_DN(F_ADD(F_DIV(F_MUL(F_SUB(v1.y,cam.position.y),cam.d),F_ADD(F_ADD(cam.d,v1.z),cam.position.y)),F_NUM_UP(SCREEN_HEIGHT>>1)));
 	vz=F_NUM_DN(v1.z);
-	vx2=F_NUM_DN(F_DIV(v2.x,v2.w));
-	vy2=F_NUM_DN(F_DIV(v2.y,v2.w));
+	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(F_SUB(v2.x,cam.position.x),cam.d),F_ADD(F_ADD(cam.d,v2.z),cam.position.x)),F_NUM_UP(SCREEN_WIDTH>>1)));
+	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(F_SUB(v2.y,cam.position.y),cam.d),F_ADD(F_ADD(cam.d,v2.z),cam.position.y)),F_NUM_UP(SCREEN_HEIGHT>>1)));
 	vz2=F_NUM_DN(v2.z);
 	
 	//Adjust values
 	/*
-	vx = (((v1.x-EYE_X)*EYE_Z)/(EYE_Z+v1.z) + EYE_X)+(SCREEN_WIDTH>>1);
-	vx2 = (((v2.x-EYE_X)*EYE_Z)/(EYE_Z+v2.z) + EYE_X)+(SCREEN_WIDTH>>1);
-	vy = (((v1.y-EYE_Y)*EYE_Z)/(EYE_Z+v1.z) + EYE_Y)+(SCREEN_HEIGHT>>1);
-	vy2 = (((v2.y-EYE_Y)*EYE_Z)/(EYE_Z+v2.z) + EYE_Y)+(SCREEN_HEIGHT>>1);
+	vx = (((vx-cam.position.x)*cam.d)/(cam.d+vz) + cam.position.x)+(SCREEN_WIDTH>>1);
+	vx2 = (((vx2-cam.position.x)*cam.d)/(cam.d+vz2) + cam.position.x)+(SCREEN_WIDTH>>1);
+	vy = (((vy-cam.position.y)*cam.d)/(cam.d+vz) + cam.position.y)+(SCREEN_HEIGHT>>1);
+	vy2 = (((vy2-cam.position.y)*cam.d)/(cam.d+vz2) + cam.position.y)+(SCREEN_HEIGHT>>1);
 	*/
 	/**************************
 	The following algorithm was taken from stack overflow
