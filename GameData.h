@@ -13,6 +13,7 @@ matrix3d m_rotate3d_y;
 matrix3d m_rotate3d_z;
 matrix3d m_camera3d;
 matrix3d m_world3d;
+matrix3d m_project3d;
 
 /*********************
 Cosine and Sine tables in degrees
@@ -172,6 +173,9 @@ const s32 starFoxShipData[STARFOXSHIPDATASIZE]={
 	8,-2,0, 8,-2,10, 8,10,-10,  //left side
 	//8,10,-10, 8,-2,10, 8,-2,0 //right side
 };
+
+//Game camera
+camera cam;
 
 #define maxGameObjects 50
 object gameObjects[maxGameObjects];
