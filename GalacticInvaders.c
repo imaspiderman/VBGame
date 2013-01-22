@@ -36,56 +36,26 @@ int main(){
 		screenControl();
 	}
 }
-/*
-void moveCrossHairs(){
-	s32 currspeed;
-	buttons = vbReadPad();
-	if(K_LPAD & buttons) crossHSpeed += 2;
-	else {
-		crossHSpeed = 0;
-		crossHairs->speed.x=0;
-		crossHairs->speed.y=0;
-		crossHairs->speed.z=0;
-	}
-	
-	if(K_LL & buttons){
-		crossHairs->speed.x+=crossHSpeed*-1;
-		moveObject(crossHairs, 9);
-	}
-	if(K_LR & buttons){
-		crossHairs->speed.x+=crossHSpeed;
-		moveObject(crossHairs, 9);
-	}
-	if(K_LU & buttons){
-		crossHairs->speed.y+=crossHSpeed*-1;
-		moveObject(crossHairs, 10);
-	}
-	if(K_LD & buttons){
-		crossHairs->speed.y+=crossHSpeed;
-		moveObject(crossHairs, 10);
-	}
-}
-*/
 
 void handleInput(){
 	buttons = vbReadPad();
 	if(K_RD & buttons){
-		starFoxShip->world.z-=F_NUM_UP(20);
+		cam.position.z-=F_NUM_UP(5);
 	}
 	if(K_RU & buttons){
-		starFoxShip->world.z+=F_NUM_UP(20);
+		cam.position.z+=F_NUM_UP(5);
 	}
 	if(K_LL & buttons){
-		starFoxShip->world.x-=F_NUM_UP(5);
+		cam.position.x-=F_NUM_UP(5);
 	}
 	if(K_LR & buttons){
-		starFoxShip->world.x+=F_NUM_UP(5);
+		cam.position.x+=F_NUM_UP(5);
 	}
 	if(K_LD & buttons){
-		starFoxShip->world.y-=F_NUM_UP(5);
+		cam.position.y-=F_NUM_UP(5);
 	}
 	if(K_LU & buttons){
-		starFoxShip->world.y+=F_NUM_UP(5);
+		cam.position.y+=F_NUM_UP(5);
 	}
 }
 
@@ -101,18 +71,6 @@ void moveObject(object* o, u8 d){
 	o->world.x+=(d&0x01)?(o->speed.x):(0);	
 	o->world.y+=(d&0x02)?(o->speed.y):(0);
 	o->world.z+=(d&0x04)?(o->speed.z):(0);
-	
-	/*
-	if(d&0x08){
-		s32 x = ((o->world.x-EYE_X)*EYE_Z)/(EYE_Z+o->world.z)+EYE_X;
-		s32 y = ((o->world.y-EYE_Y)*EYE_Z)/(EYE_Z+o->world.z)+EYE_Y;
-		
-		if(x<0 && d&0x01)  o->world.x=sLeft;
-		if(x>SCREEN_WIDTH && d&0x01) o->world.x=sRight;
-		if(y<0 && d&0x02) o->world.y=sTop;
-		if(y>SCREEN_HEIGHT && d&0x02) o->world.y=sBottom;
-	}
-	*/
 }
 
 /**************************************
@@ -136,17 +94,13 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 	o->p = ((F_NUM_DN(o->world.z)-cam.d)>>PARALLAX_SHIFT);
 	
 	worldMatrix(m_world3d,o,xscale,yscale,zscale);
-	//projectionMatrix(m_project3d);
-	
-	//matrix3dxMatrix3d(m_world3d,m_project3d,m_temp);
-	//copyMatrix(m_temp,m_world3d);
 		
 	_CacheEnable
 	i=0;
-	while(i<o->dataSize){
-		v1.x = F_NUM_UP(o->data[i]);
-		v1.y = F_NUM_UP(o->data[i+1]);
-		v1.z = F_NUM_UP(o->data[i+2]);
+	while(i<o->objData.size){
+		v1.x = F_NUM_UP(o->objData.data[i]);
+		v1.y = F_NUM_UP(o->objData.data[i+1]);
+		v1.z = F_NUM_UP(o->objData.data[i+2]);
 		v1.w = F_NUM_UP(1);
 		
 		matrix3dxVertex(&v1,m_world3d,&vt);
@@ -155,9 +109,9 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		v1.y = vt.y;
 		v1.z = vt.z;
 		
-		v2.x = F_NUM_UP(o->data[i+3]);
-		v2.y = F_NUM_UP(o->data[i+4]);
-		v2.z = F_NUM_UP(o->data[i+5]);
+		v2.x = F_NUM_UP(o->objData.data[i+3]);
+		v2.y = F_NUM_UP(o->objData.data[i+4]);
+		v2.z = F_NUM_UP(o->objData.data[i+5]);
 		v2.w = F_NUM_UP(1);
 		
 		matrix3dxVertex(&v2,m_world3d,&vt);
@@ -166,9 +120,9 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		v2.y = vt.y;
 		v2.z = vt.z;
 		
-		v3.x = F_NUM_UP(o->data[i+6]);
-		v3.y = F_NUM_UP(o->data[i+7]);
-		v3.z = F_NUM_UP(o->data[i+8]);
+		v3.x = F_NUM_UP(o->objData.data[i+6]);
+		v3.y = F_NUM_UP(o->objData.data[i+7]);
+		v3.z = F_NUM_UP(o->objData.data[i+8]);
 		v3.w = F_NUM_UP(1);
 		
 		matrix3dxVertex(&v3,m_world3d,&vt);
@@ -203,8 +157,8 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].speed.x=0;
 	gameObjects[gameObjectsIdx].speed.y=0;
 	gameObjects[gameObjectsIdx].speed.z=0;
-	gameObjects[gameObjectsIdx].dataSize=STARFOXSHIPDATASIZE;
-	gameObjects[gameObjectsIdx].data = starFoxShipData;
+	gameObjects[gameObjectsIdx].objData.size=STARFOXSHIPDATASIZE;
+	gameObjects[gameObjectsIdx].objData.data = starFoxShipData;
 	starFoxShip = &gameObjects[gameObjectsIdx];
 	gameObjectsIdx++;
 }
@@ -285,9 +239,9 @@ void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz){
 	m[2][2]=F_MUL(F_MUL(F_NUM_UP(sz),cosine[ax]),cosine[ay]);
 	m[2][3]=0;
 	
-	m[3][0]=o->world.x;
-	m[3][1]=o->world.y;
-	m[3][2]=o->world.z;
+	m[3][0]=F_SUB(o->world.x,cam.position.x);
+	m[3][1]=F_ADD(o->world.y,cam.position.y);
+	m[3][2]=F_SUB(o->world.z,cam.position.z);
 	m[3][3]=F_NUM_UP(1);
 }
 
@@ -513,6 +467,7 @@ void inline drawPoint(s16 x, s16 y, u32 color, s16 p){
 	s32 loffset,roffset;
 	u8 yleft;
 	
+	//x,y clipping
 	if(x<0 || x>SCREEN_WIDTH || y<0 || y>SCREEN_HEIGHT) return;
 	
 	loffset = ((x-p)<<4) + (y>>4);
@@ -536,21 +491,19 @@ Bresenham Line Algorithm
 *******************************/
 void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
 	s32 vx,vy,vz,vx2,vy2,vz2;
+	
+	//z clipping(clips whole line should improve in future)
+	if(v1.z<=(F_NUM_DN(-cam.d))) return;
+	if(v2.z<=(F_NUM_DN(-cam.d))) return;
+	
 	//Scale everything back to integers
-	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(F_SUB(v1.x,cam.position.x),cam.d),F_ADD(F_ADD(cam.d,v1.z),cam.position.x)),F_NUM_UP(SCREEN_WIDTH>>1)));
-	vy=F_NUM_DN(F_ADD(F_DIV(F_MUL(F_SUB(v1.y,cam.position.y),cam.d),F_ADD(F_ADD(cam.d,v1.z),cam.position.y)),F_NUM_UP(SCREEN_HEIGHT>>1)));
+	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.x,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
+	vy=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.y,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
 	vz=F_NUM_DN(v1.z);
-	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(F_SUB(v2.x,cam.position.x),cam.d),F_ADD(F_ADD(cam.d,v2.z),cam.position.x)),F_NUM_UP(SCREEN_WIDTH>>1)));
-	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(F_SUB(v2.y,cam.position.y),cam.d),F_ADD(F_ADD(cam.d,v2.z),cam.position.y)),F_NUM_UP(SCREEN_HEIGHT>>1)));
+	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.x,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
+	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.y,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
 	vz2=F_NUM_DN(v2.z);
 	
-	//Adjust values
-	/*
-	vx = (((vx-cam.position.x)*cam.d)/(cam.d+vz) + cam.position.x)+(SCREEN_WIDTH>>1);
-	vx2 = (((vx2-cam.position.x)*cam.d)/(cam.d+vz2) + cam.position.x)+(SCREEN_WIDTH>>1);
-	vy = (((vy-cam.position.y)*cam.d)/(cam.d+vz) + cam.position.y)+(SCREEN_HEIGHT>>1);
-	vy2 = (((vy2-cam.position.y)*cam.d)/(cam.d+vz2) + cam.position.y)+(SCREEN_HEIGHT>>1);
-	*/
 	/**************************
 	The following algorithm was taken from stack overflow
 	http://stackoverflow.com/questions/5186939/algorithm-for-drawing-a-4-connected-line

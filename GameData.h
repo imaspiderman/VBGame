@@ -117,6 +117,30 @@ const s32 sine[360]={
 	-18,-16,-13,-11,-9,-7,-4,-2
 };
 
+/***********************************
+Primitives we'll draw one 1/8 of the
+object and mirror it accross all axis.
+***********************************/
+//OBJDATA_T_PRIM_8
+//6 vertices
+const s32 primitiveCube[40]={
+	0,1,1,1,1,1, 
+	1,1,1,1,0,1, 
+	1,1,1,1,1,0,
+};
+
+//OBJDATA_T_PRIM_4
+//12 vertices
+const s32 primitivPyramid[54]={
+	0,1,0,1,0,1,
+	1,0,1,0,0,1,
+	1,0,1,1,0,0,
+	
+	1,0,1,2,-1,2,
+	2,-1,2,0,-1,2,
+	2,-1,2,2,-2,0,
+};
+
 /******************
 object arrays.
 ******************/
