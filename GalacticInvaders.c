@@ -1,6 +1,7 @@
 #include "GameFunctions.h"
 #include "GameData.h"
 #include "GameTypes.h"
+#include "bowtiefighter.h"
 
 int count=0;
 
@@ -30,9 +31,9 @@ int main(){
 			}
 		}
 		*/
-		moveObject(starFoxShip,7);
+		moveObject(bowTieFighter,7);
 		handleInput();
-		drawObject(starFoxShip,2,2,2);
+		drawObject(bowTieFighter,1,1,1);
 		screenControl();
 	}
 }
@@ -87,20 +88,25 @@ void copyMatrix(matrix3d m1, matrix3d m2){
 }
 
 void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
-	s32 i,loop,p,dotp;
+	s32 i,loop,faces,f,idx;
 	vector3d v1,v2,v3;
 	vector3d vt;
-	matrix3d m_temp;
 	o->p = ((F_NUM_DN(o->world.z)-cam.d)>>PARALLAX_SHIFT);
+	
+	idx=(o->objData.data[0]+(o->objData.data[0]<<1)+1);
+	faces = o->objData.data[idx] + (o->objData.data[idx]<<1);
+	idx++;//point to first face vertex
 	
 	worldMatrix(m_world3d,o,xscale,yscale,zscale);
 		
 	_CacheEnable
 	i=0;
-	while(i<o->objData.size){
-		v1.x = F_NUM_UP(o->objData.data[i]);
-		v1.y = F_NUM_UP(o->objData.data[i+1]);
-		v1.z = F_NUM_UP(o->objData.data[i+2]);
+	while(i<faces){
+		f=o->objData.data[idx+i];//Get vertex
+		f+=(f<<1)-2;//get starting index
+		v1.x = F_NUM_UP(o->objData.data[f]);
+		v1.y = F_NUM_UP(o->objData.data[f+1]);
+		v1.z = F_NUM_UP(o->objData.data[f+2]);
 		v1.w = F_NUM_UP(1);
 		
 		matrix3dxVertex(&v1,m_world3d,&vt);
@@ -109,9 +115,11 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		v1.y = vt.y;
 		v1.z = vt.z;
 		
-		v2.x = F_NUM_UP(o->objData.data[i+3]);
-		v2.y = F_NUM_UP(o->objData.data[i+4]);
-		v2.z = F_NUM_UP(o->objData.data[i+5]);
+		f=o->objData.data[idx+i+1];//Get vertex
+		f+=(f<<1)-2;//get starting index
+		v2.x = F_NUM_UP(o->objData.data[f]);
+		v2.y = F_NUM_UP(o->objData.data[f+1]);
+		v2.z = F_NUM_UP(o->objData.data[f+2]);
 		v2.w = F_NUM_UP(1);
 		
 		matrix3dxVertex(&v2,m_world3d,&vt);
@@ -120,9 +128,11 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		v2.y = vt.y;
 		v2.z = vt.z;
 		
-		v3.x = F_NUM_UP(o->objData.data[i+6]);
-		v3.y = F_NUM_UP(o->objData.data[i+7]);
-		v3.z = F_NUM_UP(o->objData.data[i+8]);
+		f=o->objData.data[idx+i+2];//Get vertex
+		f+=(f<<1)-2;//get starting index
+		v3.x = F_NUM_UP(o->objData.data[f]);
+		v3.y = F_NUM_UP(o->objData.data[f+1]);
+		v3.z = F_NUM_UP(o->objData.data[f+2]);
 		v3.w = F_NUM_UP(1);
 		
 		matrix3dxVertex(&v3,m_world3d,&vt);
@@ -134,7 +144,7 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		drawLine(v1,v2,3,o);
 		drawLine(v2,v3,3,o);
 		drawLine(v3,v1,3,o);
-		i+=9;
+		i+=3;
 		
 	}
 	_CacheDisable
@@ -157,9 +167,8 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].speed.x=0;
 	gameObjects[gameObjectsIdx].speed.y=0;
 	gameObjects[gameObjectsIdx].speed.z=0;
-	gameObjects[gameObjectsIdx].objData.size=STARFOXSHIPDATASIZE;
-	gameObjects[gameObjectsIdx].objData.data = starFoxShipData;
-	starFoxShip = &gameObjects[gameObjectsIdx];
+	gameObjects[gameObjectsIdx].objData.data = bowTieFighterData;
+	bowTieFighter = &gameObjects[gameObjectsIdx];
 	gameObjectsIdx++;
 }
 
