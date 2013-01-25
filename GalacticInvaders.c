@@ -32,6 +32,10 @@ int main(){
 		}
 		*/
 		moveObject(bowTieFighter,7);
+		bowTieFighter->rotation.y += F_NUM_UP(5);
+		if(bowTieFighter->rotation.y >= F_NUM_UP(360)){
+			bowTieFighter->rotation.y = F_SUB(bowTieFighter->rotation.y,F_NUM_UP(360));
+		}
 		handleInput();
 		drawObject(bowTieFighter,1,1,1);
 		screenControl();
@@ -41,10 +45,10 @@ int main(){
 void handleInput(){
 	buttons = vbReadPad();
 	if(K_RD & buttons){
-		cam.position.z-=F_NUM_UP(5);
+		cam.position.z-=F_NUM_UP(20);
 	}
 	if(K_RU & buttons){
-		cam.position.z+=F_NUM_UP(5);
+		cam.position.z+=F_NUM_UP(20);
 	}
 	if(K_LL & buttons){
 		cam.position.x-=F_NUM_UP(5);
