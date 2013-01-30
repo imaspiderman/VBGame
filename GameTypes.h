@@ -1,6 +1,7 @@
 #include <libgccvb.h>
 #ifndef __GameTypes_H
 #define __GameTypes_H
+
 /**********************
 Type definitions used in
 the game functions
@@ -12,10 +13,6 @@ typedef struct{
 	s32 w; //fixed point
 } vector3d;//represents a vector or coordinate.
 
-#define OBJDATA_T_PRIM_8 1 //(1/8) object in  +x,+y,+z coordinates
-#define OBJDATA_T_PRIM_4 2 //(1/4) object in  +x,+y,+z and +x,-y,+z 
-#define OBJDATA_T_PRIM_2 3 //(1/2) object in  +x,+y,+-z and +x,-y,+-z
-#define OBJDATA_T_NORMAL 4 //No symetry. Just draw all vertices.
 typedef struct{
 	u8 type;//OBJDATA_T_XXX
 	u8 size;//number of vertices

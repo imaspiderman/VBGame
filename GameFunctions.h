@@ -7,19 +7,19 @@
 Fixed point math defines
 scale factor of 128
 *******************************/
-#define F_NUM_UP(X) ((X)<<7)
-#define F_NUM_DN(X) ((X)>>7)
-#define F_MUL(X,Y) (((X)*(Y))>>7)
+#define F_NUM_UP(X) ((X)<<3)
+#define F_NUM_DN(X) (((X)>>3) + ((X>>2)&0x01)) //Rounding included
+#define F_MUL(X,Y) (((X)*(Y))>>3)
 #define F_ADD(X,Y) ((X)+(Y))
 #define F_SUB(X,Y) ((X)-(Y))
-#define F_DIV(X,Y) (((X)<<7)/(Y))
+#define F_DIV(X,Y) (F_NUM_UP(X)/(Y))
+#define F_COSINE(X) (cosine[X])
+#define F_SINE(X) (sine[X])
 /*******************************
 Defines
 *******************************/
 #define SCREEN_HEIGHT 224
 #define SCREEN_WIDTH 384
-#define MAX_OBJECTS 256
-#define MAX_VERTICES 256
 #define EYE_Z 128
 #define EYE_X 192
 #define EYE_Y 112
@@ -33,36 +33,51 @@ Defines
 Variables
 *******************************/
 //frame buffers
-u32* const LFB1 = (u32*)0x00000000;
-u32* const RFB1 = (u32*)0x00010000;
-u32* const LFB2 = (u32*)0x00008000;
-u32* const RFB2 = (u32*)0x00018000;
+//u32* const LFB1 = (u32*)0x00000000;
+//u32* const RFB1 = (u32*)0x00010000;
+//u32* const LFB2 = (u32*)0x00008000;
+//u32* const RFB2 = (u32*)0x00018000;
 
-//graphing variables
-u16 dx, dy;
-s16 e, e1, e2, sx, sy, pixels, loop;
+u32* currentFrameBuffer=(u32*)0x00000000;
+u32* nextFrameBuffer=(u32*)0x00008000;
+
+//Game camera
+camera cam;
+
+#define MAX_GAME_OBJECTS 50
+object gameObjects[MAX_GAME_OBJECTS];
+u8 gameObjectsIdx;
 
 //controls
 u8 dPadPressed = 0;
 u8 crossHSpeed = 0;
 u16 buttons;
+
+/***************************************************
+Matrix Definitions I'm using a left handed system
+which is what Direct3D uses.
+http://msdn.microsoft.com/en-us/library/windows/desktop/bb206269%28v=vs.85%29.aspx
+***************************************************/
+matrix3d m_translate3d;
+matrix3d m_scale3d;
+matrix3d m_rotate3d_x;
+matrix3d m_rotate3d_y;
+matrix3d m_rotate3d_z;
+matrix3d m_camera3d;
+matrix3d m_world3d;
+matrix3d m_project3d;
+
 /*******************************
 Functions
 *******************************/
-void vbInit();
-void ClearFrameBuffer(u32* buf);
-void ClearAllFrameBuffers(){
-	ClearFrameBuffer(LFB1);
-	ClearFrameBuffer(RFB1);
-	ClearFrameBuffer(LFB2);
-	ClearFrameBuffer(RFB2);
-}
-/*********************************************************
+
+/********************************************************
 Core Drawing Functions
 *********************************************************/
 void inline drawPoint(s16 x, s16 y, u32 color, s16 p);
 void drawLine(vector3d v1, vector3d v2, u8 color, object* o);
 void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale);
+void emptyDrawQueue();
 /********************************************************/
 
 /*********************************************************
@@ -90,6 +105,7 @@ System control functions
 *********************************************************/
 void screenControl();
 void handleInput();
+void vbInit();
 /********************************************************/
 
 /*********************************************************
@@ -98,6 +114,7 @@ Game functions
 void initObjects();
 void moveObject(object* o, u8 d);
 void moveCrossHairs();
+void vpuHnd(void);
 /********************************************************/
 
 

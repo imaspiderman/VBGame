@@ -1,43 +1,47 @@
 #include "GameFunctions.h"
 #include "GameData.h"
 #include "GameTypes.h"
-#include "bowtiefighter.h"
 
-int count=0;
+/*
+void vpuHnd(void){
+	VIP_REGS[INTENB]=0;//Disable interrupts
+	VIP_REGS[INTCLR]=VIP_REGS[INTPND];//Clear interrupts
+	
+	//if drawing is turned on and we've hit this intterupt which only occurs at frame start
+	//then we can be sure that everything has drawn to the screen and we'll turn drawing
+	//back off, set okToDraw on and flip the frame buffers we are writing to.
+	if((VIP_REGS[XPSTTS] & XPEN)){
+		VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] & ~XPEN;
+		okToDraw=1;
+		readyToDraw=0;
+	}
+	
+	//if all drawing to frame buffers is complete and drawing status is still disabled
+	//turn on drawing and set okToDraw off
+	if(readyToDraw==1 && okToDraw==1){
+		VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] | XPEN;
+		okToDraw=0;
+		if(VIP_REGS[DPSTTS] & 4) currentFrameBuffer = 0;
+		if(VIP_REGS[DPSTTS] & 8) currentFrameBuffer = 1;
+	}
+	
+	VIP_REGS[INTENB]=(FRAMESTART);
+}
+*/
 
 int main(){
-	ClearAllFrameBuffers();
+	u8 o;
+	
 	vbInit();
 	initObjects();
-	//Setup Timer
-	HW_REGS[TCR]|=(Z_Stat_Clr);
-	HW_REGS[TLR]=10;
-	HW_REGS[THR]=0;
-	HW_REGS[TCR]|=(T_Enb);
-	
-	WORLD_SET_HEAD(31,WRLD_END);
 	
 	while(1){
-		/*Timer code
-		if(HW_REGS[TCR]&Z_Stat){
-			count++;
-			if(count >= 10){
-				VIP_REGS[BKCOL]=~(u16)VIP_REGS[BKCOL];
-				HW_REGS[TCR]|=(Z_Stat_Clr);
-				HW_REGS[TLR]=10;
-				HW_REGS[THR]=0;
-				HW_REGS[TCR]|=(T_Enb);
-				count=0;
-			}
-		}
-		*/
-		moveObject(bowTieFighter,7);
-		bowTieFighter->rotation.y += F_NUM_UP(5);
-		if(bowTieFighter->rotation.y >= F_NUM_UP(360)){
-			bowTieFighter->rotation.y = F_SUB(bowTieFighter->rotation.y,F_NUM_UP(360));
-		}
 		handleInput();
-		drawObject(bowTieFighter,1,1,1);
+		for(o=0; o<gameObjectsIdx; o++){
+			moveObject(&gameObjects[o],7);
+			drawObject(&gameObjects[o],20,20,20);
+		}
+		
 		screenControl();
 	}
 }
@@ -51,16 +55,16 @@ void handleInput(){
 		cam.position.z+=F_NUM_UP(20);
 	}
 	if(K_LL & buttons){
-		cam.position.x-=F_NUM_UP(5);
+		cam.position.x-=F_NUM_UP(20);
 	}
 	if(K_LR & buttons){
-		cam.position.x+=F_NUM_UP(5);
+		cam.position.x+=F_NUM_UP(20);
 	}
 	if(K_LD & buttons){
-		cam.position.y-=F_NUM_UP(5);
+		cam.position.y-=F_NUM_UP(20);
 	}
 	if(K_LU & buttons){
-		cam.position.y+=F_NUM_UP(5);
+		cam.position.y+=F_NUM_UP(20);
 	}
 }
 
@@ -71,7 +75,6 @@ void moveObject(object* o, u8 d){
 	1=move in x direction
 	2=move in y direction
 	4=move in z direction
-	8=constrain to screen
 	************************/
 	o->world.x+=(d&0x01)?(o->speed.x):(0);	
 	o->world.y+=(d&0x02)?(o->speed.y):(0);
@@ -92,25 +95,27 @@ void copyMatrix(matrix3d m1, matrix3d m2){
 }
 
 void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
-	s32 i,loop,faces,f,idx;
-	vector3d v1,v2,v3;
+	s32 size;
+	vector3d v1,v2;
 	vector3d vt;
-	o->p = ((F_NUM_DN(o->world.z)-cam.d)>>PARALLAX_SHIFT);
+	u8 verts,i;
+	s32* v;
+	s32* vertEnd;
 	
-	idx=(o->objData.data[0]+(o->objData.data[0]<<1)+1);
-	faces = o->objData.data[idx] + (o->objData.data[idx]<<1);
-	idx++;//point to first face vertex
+	o->p = F_SUB(o->world.z,cam.position.z);
+	
+	size=o->objData.data[0];//total elements in array
+	verts=o->objData.data[1];//total vertices per section
+	
+	v=(s32*)(o->objData.data+2);//right before first vertex
+	vertEnd=(s32*)(o->objData.data+size);//last vertex
 	
 	worldMatrix(m_world3d,o,xscale,yscale,zscale);
-		
-	_CacheEnable
-	i=0;
-	while(i<faces){
-		f=o->objData.data[idx+i];//Get vertex
-		f+=(f<<1)-2;//get starting index
-		v1.x = F_NUM_UP(o->objData.data[f]);
-		v1.y = F_NUM_UP(o->objData.data[f+1]);
-		v1.z = F_NUM_UP(o->objData.data[f+2]);
+
+	while(v < vertEnd){
+		v1.x = (v)[0];
+		v1.y = (++v)[0];
+		v1.z = (++v)[0];
 		v1.w = F_NUM_UP(1);
 		
 		matrix3dxVertex(&v1,m_world3d,&vt);
@@ -118,13 +123,29 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		v1.x = vt.x;
 		v1.y = vt.y;
 		v1.z = vt.z;
-		
-		f=o->objData.data[idx+i+1];//Get vertex
-		f+=(f<<1)-2;//get starting index
-		v2.x = F_NUM_UP(o->objData.data[f]);
-		v2.y = F_NUM_UP(o->objData.data[f+1]);
-		v2.z = F_NUM_UP(o->objData.data[f+2]);
-		v2.w = F_NUM_UP(1);
+
+		for(i=1; i<verts; i++){			
+			v2.x = (++v)[0];
+			v2.y = (++v)[0];
+			v2.z = (++v)[0];
+			v2.w = F_NUM_UP(1);
+			
+			matrix3dxVertex(&v2,m_world3d,&vt);
+			
+			v2.x = vt.x;
+			v2.y = vt.y;
+			v2.z = vt.z;
+			
+			drawLine(v1,v2,3,o);
+			
+			v1.x = v2.x;
+			v1.y = v2.y;
+			v1.z = v2.z;
+		}
+		//This causes a final line to be drawn back to the starting vertex
+		v2.x = (v-(((verts<<1) + verts)-1))[0];
+		v2.y = (v-(((verts<<1) + verts)-2))[0];
+		v2.z = (v-(((verts<<1) + verts)-3))[0];
 		
 		matrix3dxVertex(&v2,m_world3d,&vt);
 		
@@ -132,26 +153,10 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		v2.y = vt.y;
 		v2.z = vt.z;
 		
-		f=o->objData.data[idx+i+2];//Get vertex
-		f+=(f<<1)-2;//get starting index
-		v3.x = F_NUM_UP(o->objData.data[f]);
-		v3.y = F_NUM_UP(o->objData.data[f+1]);
-		v3.z = F_NUM_UP(o->objData.data[f+2]);
-		v3.w = F_NUM_UP(1);
-		
-		matrix3dxVertex(&v3,m_world3d,&vt);
-		
-		v3.x = vt.x;
-		v3.y = vt.y;
-		v3.z = vt.z;
-
 		drawLine(v1,v2,3,o);
-		drawLine(v2,v3,3,o);
-		drawLine(v3,v1,3,o);
-		i+=3;
 		
+		v++;
 	}
-	_CacheDisable
 }
 
 void initObjects(){
@@ -163,7 +168,7 @@ void initObjects(){
 	gameObjectsIdx=0;
 	gameObjects[gameObjectsIdx].world.x=0;
 	gameObjects[gameObjectsIdx].world.y=0;
-	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(100);
+	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(500);
 	gameObjects[gameObjectsIdx].rotation.x=0;
 	gameObjects[gameObjectsIdx].rotation.y=0;
 	gameObjects[gameObjectsIdx].rotation.z=0;
@@ -171,8 +176,7 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].speed.x=0;
 	gameObjects[gameObjectsIdx].speed.y=0;
 	gameObjects[gameObjectsIdx].speed.z=0;
-	gameObjects[gameObjectsIdx].objData.data = bowTieFighterData;
-	bowTieFighter = &gameObjects[gameObjectsIdx];
+	gameObjects[gameObjectsIdx].objData.data = tieFighter;
 	gameObjectsIdx++;
 }
 
@@ -211,7 +215,6 @@ single transform matrix.
 ************************************/
 void matrix3dxMatrix3d(matrix3d m1, matrix3d m2, matrix3d n){
 	u8 i,j,k;
-	s32 t;
 	i=j=k=0;
 	
 	for(i=0;i<4;i++){
@@ -233,23 +236,23 @@ void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz){
 	ay = F_NUM_DN((o->rotation.y<0)?(F_NUM_UP(360)+o->rotation.y):(o->rotation.y));
 	az = F_NUM_DN((o->rotation.z<0)?(F_NUM_UP(360)+o->rotation.z):(o->rotation.z));
 	
-	m[0][0]=F_MUL(F_MUL(F_NUM_UP(sx),cosine[ay]),cosine[az]);
-	m[0][1]=F_MUL(F_MUL(F_NUM_UP(sx),cosine[ay]),sine[az]);
-	m[0][2]=F_MUL(F_NUM_UP(sx),-(sine[ay]));
+	m[0][0]=F_MUL(F_MUL(F_NUM_UP(sx),F_COSINE(ay)),F_COSINE(az));
+	m[0][1]=F_MUL(F_MUL(F_NUM_UP(sx),F_COSINE(ay)),F_SINE(az));
+	m[0][2]=F_MUL(F_NUM_UP(sx),-(F_SINE(ay)));
 	m[0][3]=0;
 	
-	m[1][0]=F_ADD(F_MUL(F_MUL(F_MUL(F_NUM_UP(sy),sine[ax]),sine[ay]),cosine[az]),
-	        F_MUL(F_MUL(F_NUM_UP(sy),cosine[ax]),-sine[az]));
-	m[1][1]=F_ADD(F_MUL(F_MUL(F_NUM_UP(sy),cosine[ax]),cosine[az]),
-	        F_MUL(F_MUL(F_MUL(F_NUM_UP(sy),sine[ax]),sine[ay]),sine[az]));
-	m[1][2]=F_MUL(F_MUL(F_NUM_UP(sy),sine[ax]),cosine[ay]);
+	m[1][0]=F_ADD(F_MUL(F_MUL(F_MUL(F_NUM_UP(sy),F_SINE(ax)),F_SINE(ay)),F_COSINE(az)),
+	        F_MUL(F_MUL(F_NUM_UP(sy),F_COSINE(ax)),-F_SINE(az)));
+	m[1][1]=F_ADD(F_MUL(F_MUL(F_NUM_UP(sy),F_COSINE(ax)),F_COSINE(az)),
+	        F_MUL(F_MUL(F_MUL(F_NUM_UP(sy),F_SINE(ax)),F_SINE(ay)),F_SINE(az)));
+	m[1][2]=F_MUL(F_MUL(F_NUM_UP(sy),F_SINE(ax)),F_COSINE(ay));
 	m[1][3]=0;
 	
-	m[2][0]=F_ADD(F_MUL(F_MUL(F_MUL(F_NUM_UP(sz),cosine[ax]),cosine[az]),sine[ay]),
-	        F_MUL(F_MUL(F_NUM_UP(sz),-sine[ax]),-sine[az]));
-	m[2][1]=F_ADD(F_MUL(F_MUL(F_NUM_UP(sz),-sine[ax]),cosine[az]),
-	        F_MUL(F_MUL(F_MUL(F_NUM_UP(sz),cosine[ax]),sine[ay]),sine[az]));
-	m[2][2]=F_MUL(F_MUL(F_NUM_UP(sz),cosine[ax]),cosine[ay]);
+	m[2][0]=F_ADD(F_MUL(F_MUL(F_MUL(F_NUM_UP(sz),F_COSINE(ax)),F_COSINE(az)),F_SINE(ay)),
+	        F_MUL(F_MUL(F_NUM_UP(sz),-F_SINE(ax)),-F_SINE(az)));
+	m[2][1]=F_ADD(F_MUL(F_MUL(F_NUM_UP(sz),-F_SINE(ax)),F_COSINE(az)),
+	        F_MUL(F_MUL(F_MUL(F_NUM_UP(sz),F_COSINE(ax)),F_SINE(ay)),F_SINE(az)));
+	m[2][2]=F_MUL(F_MUL(F_NUM_UP(sz),F_COSINE(ax)),F_COSINE(ay));
 	m[2][3]=0;
 	
 	m[3][0]=F_SUB(o->world.x,cam.position.x);
@@ -338,12 +341,12 @@ void projectionMatrix(matrix3d m){
 	
 	m[2][0]=0;
 	m[2][1]=0;
-	m[2][2]=F_DIV(F_ADD(F_NUM_UP(FAR_Z),cam.d),F_SUB(F_NUM_UP(FAR_Z),cam.d));
-	m[2][3]=F_NUM_UP(1);
+	m[2][2]=F_DIV(F_NUM_UP(FAR_Z),F_SUB(F_NUM_UP(FAR_Z),cam.d));
+	m[2][3]=F_DIV((F_MUL(cam.d,F_NUM_UP(FAR_Z))),(F_SUB(F_NUM_UP(FAR_Z),cam.d)));
 	
 	m[3][0]=0;
 	m[3][1]=0;
-	m[3][2]=F_DIV((F_MUL(cam.d,F_NUM_UP(FAR_Z))<<1),(F_SUB(F_NUM_UP(FAR_Z),cam.d)));
+	m[3][2]=F_NUM_UP(1);
 	m[3][3]=0;
 }
 
@@ -353,13 +356,13 @@ angle is in degrees.
 *******************************/
 void rotateMatrixZ(matrix3d m,s32 angle){
 	angle = F_NUM_DN((angle<0)?(F_NUM_UP(360)+angle):(angle));
-	m[0][0]=cosine[angle];
-	m[0][1]=sine[angle];
+	m[0][0]=F_COSINE(angle);
+	m[0][1]=F_SINE(angle);
 	m[0][2]=0;
 	m[0][3]=0;
 	
-	m[1][0]=-(sine[angle]);
-	m[1][1]=cosine[angle];
+	m[1][0]=-(F_SINE(angle));
+	m[1][1]=F_COSINE(angle);
 	m[1][2]=0;
 	m[1][3]=0;
 	
@@ -380,9 +383,9 @@ angle is in degrees.
 *******************************/
 void rotateMatrixY(matrix3d m,s32 angle){
 	angle = F_NUM_DN((angle<0)?(F_NUM_UP(360)+angle):(angle));
-	m[0][0]=cosine[angle];
+	m[0][0]=F_COSINE(angle);
 	m[0][1]=0;
-	m[0][2]=-(sine[angle]);
+	m[0][2]=-(F_SINE(angle));
 	m[0][3]=0;
 	
 	m[1][0]=0;
@@ -390,9 +393,9 @@ void rotateMatrixY(matrix3d m,s32 angle){
 	m[1][2]=0;
 	m[1][3]=0;
 	
-	m[2][0]=sine[angle];
+	m[2][0]=F_SINE(angle);
 	m[2][1]=0;
-	m[2][2]=cosine[angle];
+	m[2][2]=F_COSINE(angle);
 	m[2][3]=0;
 	
 	m[3][0]=0;
@@ -413,13 +416,13 @@ void rotateMatrixX(matrix3d m,s32 angle){
 	m[0][3]=0;
 	
 	m[1][0]=0;
-	m[1][1]=cosine[angle];
-	m[1][2]=sine[angle];
+	m[1][1]=F_COSINE(angle);
+	m[1][2]=F_SINE(angle);
 	m[1][3]=0;
 	
 	m[2][0]=0;
-	m[2][1]=-(sine[angle]);
-	m[2][2]=cosine[angle];
+	m[2][1]=-(F_SINE(angle));
+	m[2][2]=F_COSINE(angle);
 	m[2][3]=0;
 	
 	m[3][0]=0;
@@ -465,14 +468,6 @@ void vbInit(){
 	
 	HW_REGS[WCR] = 1;
 }
-
-void ClearFrameBuffer(u32* buf){
-	u16 i;
-	for(i=0;i<0x2000;i++){
-		buf[i] = 0x00000000;
-	}
-}
-
 /*******************************
 Draws a pixel onto the screen
 *******************************/
@@ -480,49 +475,51 @@ void inline drawPoint(s16 x, s16 y, u32 color, s16 p){
 	s32 loffset,roffset;
 	u8 yleft;
 	
-	//x,y clipping
-	if(x<0 || x>SCREEN_WIDTH || y<0 || y>SCREEN_HEIGHT) return;
+	loffset = (((x-p)<<4) + (y>>4));
+	roffset = (loffset + (p<<5));
 	
-	loffset = ((x-p)<<4) + (y>>4);
-	roffset = ((x+p)<<4) + (y>>4);
+	if(loffset>0x5FFF || loffset<0) return;
+	if(roffset>0x5FFF || roffset<0) return;
+	
 	color &= 0x03;
 	
 	yleft = y&0x0F;
 	if(yleft>0) yleft <<= 1;
 	
 	color <<= yleft;
-	
-	LFB1[loffset] |= color;
-	RFB1[roffset] |= color;
-	LFB2[loffset] |= color;
-	RFB2[roffset] |= color;
-	
+
+	currentFrameBuffer[loffset] |= color;
+	((u32*)(currentFrameBuffer+0x4000))[roffset] |= color;
 }
 
 /*******************************
 Bresenham Line Algorithm
 *******************************/
 void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
-	s32 vx,vy,vz,vx2,vy2,vz2;
-	
+	s32 vx,vy,vx2,vy2;
+	s32 dx, dy;
+	s16 e, e1, e2, sx, sy, pixels, loop;
+
 	//z clipping(clips whole line should improve in future)
-	if(v1.z<=(F_NUM_DN(-cam.d))) return;
-	if(v2.z<=(F_NUM_DN(-cam.d))) return;
+	if(v1.z<=(F_NUM_DN(cam.position.z))) return;
+	if(v2.z<=(F_NUM_DN(cam.position.z))) return;
 	
-	//Scale everything back to integers
+	//Scale everything back to integers and apply projection
 	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.x,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
 	vy=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.y,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
-	vz=F_NUM_DN(v1.z);
+
 	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.x,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
 	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.y,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
-	vz2=F_NUM_DN(v2.z);
-	
+
+
 	/**************************
 	The following algorithm was taken from stack overflow
 	http://stackoverflow.com/questions/5186939/algorithm-for-drawing-a-4-connected-line
 	**************************/
-	dx=abs(vx2-vx);
-	dy=abs(vy2-vy);
+	dx=vx2-vx;
+	dx=((dx >> 31))?(~dx + 1):(dx); //absolute value
+	dy=vy2-vy;
+	dy=((dy >> 31))?(~dy + 1):(dy);
 	
 	sx = (vx<vx2)?(1):(-1);
 	sy = (vy<vy2)?(1):(-1);
@@ -530,11 +527,12 @@ void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
 	pixels=dx+dy; //pixels
 	e=0;
 	
+	CACHE_ENABLE;
 	for(loop=0; loop<pixels; loop++){
-		drawPoint(vx,vy,color,F_NUM_DN(o->p));
+		drawPoint(vx,vy,color,(F_NUM_DN(o->p)>>PARALLAX_SHIFT));
 		e1=e+dy;
 		e2=e-dx;
-		if(abs(e1)<abs(e2)){
+		if(((e1>>15)?(~e1 + 1):(e1)) < ((e2>>15)?(~e2 + 1):(e2))){
 			vx+=sx;
 			e=e1;
 		}else{
@@ -542,6 +540,7 @@ void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
 			e=e2;
 		}
 	}
+	CACHE_DISABLE;
 }
 
 /*******************************
@@ -568,13 +567,19 @@ Controls the timing of the screen
 refresh. Borrowed from the Hunter game
 written by DanB.
 *******************************/
-void screenControl(){
+void screenControl(){	
+	u32* t;
+	
 	static u16 pgflip = XPBSY1;
 	pgflip = ~pgflip & XPBSYR;
 	
 	VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] | XPEN;
 	while(!(VIP_REGS[XPSTTS] & pgflip));
-	VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] & XPENOFF;//Disable drawing
+	VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] & ~XPEN;//Disable drawing
+
+	t = currentFrameBuffer;
+	currentFrameBuffer = nextFrameBuffer;
+	nextFrameBuffer = t;
 }
 
 /***********************************
@@ -587,6 +592,27 @@ void normalizeVector(vector3d* v, vector3d* n){
 	n->x = F_DIV(v->x,length);
 	n->y = F_DIV(v->y,length);
 	n->z = F_DIV(v->z,length);
+}
+
+/***********************************
+Copy drawing data into frame buffers
+***********************************/
+void copyBuffer(u32* buffer, u32* fBuffer, u32 buffSize){
+	u32* p1 = fBuffer;
+	u32* p2 = buffer;
+	u32* ps = p1 + buffSize;
+	while(p1<ps){
+		p1[0]=p2[0];
+		p1[1]=p2[1];
+		p1[2]=p2[2];
+		p1[3]=p2[3];
+		p1[4]=p2[4];
+		p1[5]=p2[5];
+		p1[6]=p2[6];
+		p1[7]=p2[7];
+		p1+=8;
+		p2+=8;
+	}
 }
 
 /*************************************
