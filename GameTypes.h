@@ -15,7 +15,6 @@ typedef struct{
 
 typedef struct{
 	u8 type;//OBJDATA_T_XXX
-	u8 size;//number of vertices
 	const s32* data;//pointer to data
 } objectData;
 
@@ -24,10 +23,6 @@ typedef struct{
 } objectAttributes;
 
 typedef struct object{
-	struct object* parent;
-	struct object* sibling;
-	struct object* child;
-	
 	objectAttributes attributes;
 	vector3d world;
 	vector3d rotation;

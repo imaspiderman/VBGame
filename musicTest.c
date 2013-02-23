@@ -1,61 +1,73 @@
 #include <libgccvb.h>
-#include "starwars.h"
+#include "Music.h"
+
+#define MAX_NOTE_LENGTH 150
 
 u32 soundStart = 0;
 
-void DoSound(){
-	if(soundStart==0 || soundStart>(STARWARS_LEN>>1)){
-		u8 i;
-		soundStart=0;
-		
-		timer_freq(1);
-		timer_set(TIME_MS(1));
-		timer_enable(1);
-		timer_int(1);
-		
-		//Sound code for no interrupt
-		/*
-		while(soundStart<STARWARS_LEN){//DogP's wavonvb.c example code
-			if (!(soundStart&1)) //first half of packed data
-				SND_REGS[0].SxLRV=(starwars[soundStart>>1]&0xF0)|(starwars[soundStart>>1]>>4);
-			else //second half of packed data
-				SND_REGS[0].SxLRV=((starwars[soundStart>>1]&0x0F)<<4)|(starwars[soundStart>>1]&0x0F);
-			for(i=0;i<32;i++);//slight delay
-			
-			soundStart++;
+midiTrack t1 = {0,(midiNote*)track_1,1,0,0x77};
+midiTrack t2 = {0,(midiNote*)track_2,1,0,0x77};
+midiTrack t3 = {0,(midiNote*)track_5,1,0,0x77};
+#define NUM_TRACKS 3
+midiTrack trackTable[NUM_TRACKS];
 
-			SND_REGS[0].SxINT = 0xBF;//Start sound
-			while(SND_REGS[0].SxINT & 80);//Wait for interval to reach 0
-		} 
-		*/
+void DoSound(u16 timerCount){
+	u8 i;
+	for(i=0; i<NUM_TRACKS; i++){
+		trackTable[i].currNote = 0;
 	}
+	musicTick = 0;
+	timer_freq(1);
+	timer_set(timerCount);
+	timer_enable(1);
+	timer_int(1);
 }
 
 void timeHnd(void){
-	u8 loop,i;
-	
+	u8 tr,doTimer;
 	timer_int(0);
 	timer_enable(0);
 	timer_clearstat();
 	
-	loop=0;
-	while(soundStart<STARWARS_LEN && loop < 8){//DogP's wavonvb.c example code
-		if (!(soundStart&1)) //first half of packed data
-			SND_REGS[0].SxLRV=(starwars[soundStart>>1]&0xF0)|(starwars[soundStart>>1]>>4);
-		else //second half of packed data
-			SND_REGS[0].SxLRV=((starwars[soundStart>>1]&0x0F)<<4)|(starwars[soundStart>>1]&0x0F);
-		//for(i=0;i<18;i++);//slight delay
-		
-		soundStart++;
-		loop++;
+	for(tr=0; tr<NUM_TRACKS; tr++){
+		if(trackTable[tr].play == 0) continue;
+		if(trackTable[tr].data[trackTable[tr].currNote].tickPosition == musicTick && 
+		   trackTable[tr].data[trackTable[tr].currNote].onoff == 0x09){//Start note
+		    while(trackTable[tr].data[trackTable[tr].currNote+1].tickPosition == musicTick && //Look for the last note in a cord and play that one.
+			      trackTable[tr].data[trackTable[tr].currNote+1].onoff == 0x09) trackTable[tr].currNote++;
+			SND_REGS[tr].SxFQH=(FREQUENCY[trackTable[tr].data[trackTable[tr].currNote].note]>>8) & 0xFF;
+			SND_REGS[tr].SxFQL=FREQUENCY[trackTable[tr].data[trackTable[tr].currNote].note] & 0xFF;
+			SND_REGS[tr].SxLRV=trackTable[tr].volume;
+			SND_REGS[tr].SxRAM = tr;
+			trackTable[tr].offNote = 0;
+			SND_REGS[tr].SxINT = 0x9F;
+		}
+		/*some midi's don't have off notes so this sets a max length for a given note*/
+		trackTable[tr].offNote++;
+		if(trackTable[tr].offNote > MAX_NOTE_LENGTH){
+			SND_REGS[tr].SxINT = 0x00;
+		}
 
-		SND_REGS[0].SxINT = 0x9F;//Start sound (That's how I usually start it)
-		//while(SND_REGS[0].SxINT & 80);//Wait for interval to reach 0 (Doesn't seem to work on hardware)
-	} //Do 4 bytes of data per interrupt
-	if(soundStart<STARWARS_LEN){
+		while(trackTable[tr].data[trackTable[tr].currNote].tickPosition <= musicTick && 
+		      trackTable[tr].data[trackTable[tr].currNote].tickPosition != 0xFFFFFFFF){
+			trackTable[tr].currNote++;
+		}
+		
+		if(trackTable[tr].data[trackTable[tr].currNote].tickPosition == 0xFFFFFFFF){
+			trackTable[tr].play = 0;
+			trackTable[tr].currNote = 0;
+			SND_REGS[tr].SxINT=0;
+		}
+	}
+	musicTick++;
+	doTimer = 0x00;
+	for(tr=0; tr<NUM_TRACKS; tr++){
+		if(trackTable[tr].play == 1) doTimer = 0x01;
+	}
+	if(doTimer){
 		timer_int(1);
 		timer_enable(1);
-	} else soundStart = 0;
+	}
 }
 
 void vbInit(){
@@ -69,6 +81,10 @@ void vbInit(){
 	HW_REGS[WCR] = 1;
 	
 	tim_vector = (u32)timeHnd;
+	
+	trackTable[0] = t1;
+	trackTable[1] = t2;
+	trackTable[2] = t3;
 }
 
 const u8 kModData[] = {
@@ -79,13 +95,18 @@ const u8 kModData[] = {
 int main(){
 	u16 i;
 	
+	SSTOP = 0;
+	
 	//For me it sounds like the modulation data reduces the background noise
 	for(i = 0; i <= 0x7C; i++) 
 	{	
 		MODDATA[i << 2] = kModData[i];
 	}
 	
-	for(i=0;i<32;i++)WAVEDATA1[i<<2] = 0x3F;//DC wave
+	for(i=0;i<32;i++)WAVEDATA1[i<<2] = TRUMPET[i];//Instrument
+	for(i=0;i<32;i++)WAVEDATA2[i<<2] = PIANO[i];//Instrument
+	for(i=0;i<32;i++)WAVEDATA3[i<<2] = VIOLIN[i];//Instrument
+	
 	
 	vbInit();
 	SSTOP = 1;
@@ -94,16 +115,24 @@ int main(){
 	SND_REGS[0].SxRAM = 0x00;
 	SND_REGS[0].SxFQH = 0x00;
 	SND_REGS[0].SxFQL = 0x00;
+	SND_REGS[0].SxLRV = 0x33;
 	
-	SSTOP = 0;
+	SND_REGS[1].SxEV0 = 0xFC;         	// No fadeout; volume is constant.
+    SND_REGS[1].SxEV1 = 0x02;         	// Repeat it forever.
+	SND_REGS[1].SxRAM = 0x00;
+	SND_REGS[1].SxFQH = 0x00;
+	SND_REGS[1].SxFQL = 0x00;
+	SND_REGS[1].SxLRV = 0x33;
 	
-	
-	
-	
-	DoSound(); //only start the interupt handler once
+	SND_REGS[2].SxEV0 = 0xFC;         	// No fadeout; volume is constant.
+    SND_REGS[2].SxEV1 = 0x02;         	// Repeat it forever.
+	SND_REGS[2].SxRAM = 0x00;
+	SND_REGS[2].SxFQH = 0x00;
+	SND_REGS[2].SxFQL = 0x00;
+	SND_REGS[2].SxLRV = 0x33;
 	
 	while(1){
-			//while(!(vbReadPad() & K_ANY));
-			
+			while(!(vbReadPad() & K_ANY));
+			DoSound(333);
 	}
 }

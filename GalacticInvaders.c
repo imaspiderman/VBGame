@@ -2,46 +2,19 @@
 #include "GameData.h"
 #include "GameTypes.h"
 
-/*
-void vpuHnd(void){
-	VIP_REGS[INTENB]=0;//Disable interrupts
-	VIP_REGS[INTCLR]=VIP_REGS[INTPND];//Clear interrupts
-	
-	//if drawing is turned on and we've hit this intterupt which only occurs at frame start
-	//then we can be sure that everything has drawn to the screen and we'll turn drawing
-	//back off, set okToDraw on and flip the frame buffers we are writing to.
-	if((VIP_REGS[XPSTTS] & XPEN)){
-		VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] & ~XPEN;
-		okToDraw=1;
-		readyToDraw=0;
-	}
-	
-	//if all drawing to frame buffers is complete and drawing status is still disabled
-	//turn on drawing and set okToDraw off
-	if(readyToDraw==1 && okToDraw==1){
-		VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] | XPEN;
-		okToDraw=0;
-		if(VIP_REGS[DPSTTS] & 4) currentFrameBuffer = 0;
-		if(VIP_REGS[DPSTTS] & 8) currentFrameBuffer = 1;
-	}
-	
-	VIP_REGS[INTENB]=(FRAMESTART);
-}
-*/
-
 int main(){
 	u8 o;
 	
 	vbInit();
 	initObjects();
-	
 	while(1){
 		handleInput();
+
 		for(o=0; o<gameObjectsIdx; o++){
 			moveObject(&gameObjects[o],7);
 			drawObject(&gameObjects[o],20,20,20);
 		}
-		
+
 		screenControl();
 	}
 }
@@ -136,7 +109,7 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 			v2.y = vt.y;
 			v2.z = vt.z;
 			
-			drawLine(v1,v2,3,o);
+			myDrawLine(v1,v2,3,o);
 			
 			v1.x = v2.x;
 			v1.y = v2.y;
@@ -153,7 +126,7 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		v2.y = vt.y;
 		v2.z = vt.z;
 		
-		drawLine(v1,v2,3,o);
+		myDrawLine(v1,v2,3,o);
 		
 		v++;
 	}
@@ -165,8 +138,9 @@ void initObjects(){
 	cam.position.z = 0;
 	cam.d = F_NUM_UP(128);
 	
+	//tie fighter body
 	gameObjectsIdx=0;
-	gameObjects[gameObjectsIdx].world.x=0;
+	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(-200);
 	gameObjects[gameObjectsIdx].world.y=0;
 	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(500);
 	gameObjects[gameObjectsIdx].rotation.x=0;
@@ -177,6 +151,45 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].speed.y=0;
 	gameObjects[gameObjectsIdx].speed.z=0;
 	gameObjects[gameObjectsIdx].objData.data = tieFighter;
+	gameObjectsIdx++;
+	//tie fighter wings
+	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
+	gameObjects[gameObjectsIdx].world.y=gameObjects[gameObjectsIdx-1].world.y;
+	gameObjects[gameObjectsIdx].world.z=gameObjects[gameObjectsIdx-1].world.z;
+	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
+	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
+	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
+	gameObjects[gameObjectsIdx].p=gameObjects[gameObjectsIdx-1].p;
+	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
+	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
+	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].objData.data = tieFighterWings;
+	gameObjectsIdx++;
+	//tie fighter body
+	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(200);
+	gameObjects[gameObjectsIdx].world.y=F_NUM_UP(-100);
+	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(500);
+	gameObjects[gameObjectsIdx].rotation.x=0;
+	gameObjects[gameObjectsIdx].rotation.y=0;
+	gameObjects[gameObjectsIdx].rotation.z=0;
+	gameObjects[gameObjectsIdx].p=0;
+	gameObjects[gameObjectsIdx].speed.x=0;
+	gameObjects[gameObjectsIdx].speed.y=0;
+	gameObjects[gameObjectsIdx].speed.z=0;
+	gameObjects[gameObjectsIdx].objData.data = tieFighter;
+	gameObjectsIdx++;
+	//tie fighter wings
+	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
+	gameObjects[gameObjectsIdx].world.y=gameObjects[gameObjectsIdx-1].world.y;
+	gameObjects[gameObjectsIdx].world.z=gameObjects[gameObjectsIdx-1].world.z;
+	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
+	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
+	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
+	gameObjects[gameObjectsIdx].p=gameObjects[gameObjectsIdx-1].p;
+	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
+	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
+	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].objData.data = tieFighterWings;
 	gameObjectsIdx++;
 }
 
@@ -467,11 +480,13 @@ void vbInit(){
 	VIP_REGS[BRTC]  = 32;
 	
 	HW_REGS[WCR] = 1;
+	
+	VIP_REGS[FRMCYC] = 0;
 }
 /*******************************
 Draws a pixel onto the screen
 *******************************/
-void inline drawPoint(s16 x, s16 y, u32 color, s16 p){
+void inline drawPoint(s32 x, s32 y, u8 color, s32 p){
 	s32 loffset,roffset;
 	u8 yleft;
 	
@@ -483,13 +498,10 @@ void inline drawPoint(s16 x, s16 y, u32 color, s16 p){
 	
 	color &= 0x03;
 	
-	yleft = y&0x0F;
-	if(yleft>0) yleft <<= 1;
-	
-	color <<= yleft;
+	yleft = (y&0x0F)<<1;
 
-	currentFrameBuffer[loffset] |= color;
-	((u32*)(currentFrameBuffer+0x4000))[roffset] |= color;
+	currentFrameBuffer[loffset] |= (color<<yleft);
+	((u32*)(currentFrameBuffer+0x4000))[roffset] |= (color<<yleft);
 }
 
 /*******************************
@@ -544,6 +556,84 @@ void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
 }
 
 /*******************************
+My Line Algorithm
+*******************************/
+void myDrawLine(vector3d v1, vector3d v2, u8 color, object* o){
+	s32 vx,vy,vx2,vy2;
+	s32 dx, dy, dmin;
+	s8 shift,sy,sx,p;
+
+	//z clipping(clips whole line should improve in future)
+	if(v1.z<=(F_NUM_DN(cam.position.z))) return;
+	if(v2.z<=(F_NUM_DN(cam.position.z))) return;
+	
+	//Scale everything back to integers and apply projection
+	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.x,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
+	vy=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.y,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
+
+	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.x,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
+	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.y,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
+
+	/****************
+	Get dx and dy.
+	"Normalize" dx/dy by converting to next power of 2 and shifting until dx or dy = 1;
+	Calculate last line segment based on normalized dx/dy, divide by 2 and add that to the larger of dx and dy
+	****************/
+	dx=(~(vx-vx2))+1;
+	dy=(~(vy-vy2))+1;
+	
+	sy=(dy<0)?(-1):(1);
+	sx=(dx<0)?(-1):(1);
+	
+	//Get next power of 2
+	if(dx<0) dx=(~dx)+1;
+	if(dy<0) dy=(~dy)+1;
+	
+	dx = (dx ^ ~dx) + 1;
+	dy = (dy ^ ~dy) + 1;
+	dmin = (dx<dy)?(dx):(dy);
+	
+	//Get number of bits to shift to normalize
+	switch(dmin){
+		case(0):shift = 0;break;
+		case(2):shift = 1;break;
+		case(4):shift = 2;break;
+		case(8):shift = 3;break;
+		case(16):shift = 4;break;
+		case(32):shift = 5;break;
+		case(64):shift = 6;break;
+		case(128):shift = 7;break;
+		case(256):shift = 8;break;
+		case(512):shift = 9;break;
+	}
+	//These are now normalized for 1 pixel
+	dx = dx >> shift;
+	dy = dy >> shift;
+	
+	//CACHE_ENABLE;
+	if(dx<dy){
+		while(vy!=vy2){
+			for(p=0;p<dy;p++){
+				drawPoint(vx,vy,3,o->p);
+				vy+=sy;
+				if(vy==vy2)break;
+			}
+			if(vx!=vx2) vx+=sx;
+		}
+	}else{
+		while(vx!=vx2){
+			for(p=0;p<dx;p++){
+				drawPoint(vx,vy,3,o->p);
+				vx+=sx;
+				if(vx==vx2)break;
+			}
+			if(vy!=vy2) vy+=sy;
+		}
+	}
+	//CACHE_DISABLE;
+}
+
+/*******************************
 Dot Product function for determining
 the angle between two vectors.
 *******************************/
@@ -567,19 +657,20 @@ Controls the timing of the screen
 refresh. Borrowed from the Hunter game
 written by DanB.
 *******************************/
-void screenControl(){	
+void screenControl(void){	
 	u32* t;
 	
 	static u16 pgflip = XPBSY1;
-	pgflip = ~pgflip & XPBSYR;
+	pgflip = ~pgflip & 0x000C;
 	
-	VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] | XPEN;
+	VIP_REGS[XPCTRL] = (VIP_REGS[XPSTTS] | XPEN);
 	while(!(VIP_REGS[XPSTTS] & pgflip));
-	VIP_REGS[XPCTRL] = VIP_REGS[XPSTTS] & ~XPEN;//Disable drawing
-
+	VIP_REGS[XPCTRL] = (VIP_REGS[XPSTTS] & ~XPEN);//Disable drawing
+	
 	t = currentFrameBuffer;
 	currentFrameBuffer = nextFrameBuffer;
 	nextFrameBuffer = t;
+
 }
 
 /***********************************

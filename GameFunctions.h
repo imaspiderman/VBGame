@@ -38,13 +38,13 @@ Variables
 //u32* const LFB2 = (u32*)0x00008000;
 //u32* const RFB2 = (u32*)0x00018000;
 
-u32* currentFrameBuffer=(u32*)0x00000000;
-u32* nextFrameBuffer=(u32*)0x00008000;
+u32* currentFrameBuffer=(u32*)0x00008000;
+u32* nextFrameBuffer=(u32*)0x00000000;
 
 //Game camera
 camera cam;
 
-#define MAX_GAME_OBJECTS 50
+#define MAX_GAME_OBJECTS 256
 object gameObjects[MAX_GAME_OBJECTS];
 u8 gameObjectsIdx;
 
@@ -74,8 +74,9 @@ Functions
 /********************************************************
 Core Drawing Functions
 *********************************************************/
-void inline drawPoint(s16 x, s16 y, u32 color, s16 p);
+void inline drawPoint(s32 x, s32 y, u8 color, s32 p);
 void drawLine(vector3d v1, vector3d v2, u8 color, object* o);
+void myDrawLine(vector3d v1, vector3d v2, u8 color, object* o);
 void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale);
 void emptyDrawQueue();
 /********************************************************/
