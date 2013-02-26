@@ -29,7 +29,7 @@ Defines
 #define PARALLAX_MAX 31
 #define PARALLAX_SHIFT 8
 #define ROTATION_SPEED F_NUM_UP(6)
-#define FLYING_SPEED F_NUM_UP(-50)
+#define FLYING_SPEED F_NUM_UP(50)
 /*******************************
 Variables
 *******************************/
@@ -51,8 +51,10 @@ u8 gameObjectsIdx;
 
 //controls
 u8 dPadPressed = 0;
-u8 crossHSpeed = 0;
 u16 buttons;
+
+//random number
+u16 randomNumber = 0;
 
 /***************************************************
 Matrix Definitions I'm using a left handed system
@@ -98,6 +100,8 @@ void scaleMatrix(matrix3d m,s32 sx, s32 sy, s32 sz);
 void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz);
 void copyMatrix(matrix3d m1, matrix3d m2);
 void normalizeVector(vector3d* v, vector3d* n);
+void subtractVector(vector3d* vStart, vector3d* vEnd, vector3d* n);
+u8 isEqualVector(vector3d* v1, vector3d* v2);
 void projectionMatrix(matrix3d m);
 /********************************************************/
 
@@ -113,7 +117,8 @@ void vbInit();
 Game functions
 *********************************************************/
 void initObjects();
-void moveObject(object* o, u8 d);
+void moveObject(object* o);
+u8 isMoving(object* o);
 void visualEffects(object* o);
 /********************************************************/
 

@@ -26,6 +26,7 @@ typedef struct{
 typedef struct object{
 	objectAttributes attributes;
 	vector3d world;
+	vector3d moveTo;
 	vector3d rotation;
 	vector3d rotateSpeed;
 	vector3d speed;

@@ -4,16 +4,44 @@
 
 int main(){
 	u8 o;
+	u16 position;
 	
 	vbInit();
 	initObjects();
 	while(1){
 		handleInput();
-
+		
 		for(o=0; o<gameObjectsIdx; o++){
-			moveObject(&gameObjects[o],7);
-			if(gameObjects[o].objData == wallEffects){
+			//Perform the actual movement of game objects
+			moveObject(&gameObjects[o]);
+			
+			//Do random number reset
+			randomNumber++;
+			if(randomNumber > 255) randomNumber = 0;
+			
+			//Make it look like were flying forward
+			if(gameObjects[o].objData == (objectData*)wallEffects){
+				if(!isMoving(&gameObjects[o])){
+					gameObjects[o].moveTo.z = 0; 
+				}
 				visualEffects(&gameObjects[o]);
+			}
+			
+			//Make enemies move around in a sudo random manner
+			if(gameObjects[o].objData == (objectData*)tieFighter){
+				if(!isMoving(&gameObjects[o])){
+					//Set first postion
+					position = ((randomNumber & (TOTAL_ENEMY_POSITIONS-1)) * 3);
+					//Get and set sudo random postion
+					gameObjects[o].moveTo.x = F_NUM_UP(tieFighterPositions[position]);
+					gameObjects[o+1].moveTo.x = gameObjects[o].moveTo.x;
+			
+					gameObjects[o].moveTo.y = F_NUM_UP(tieFighterPositions[++position]);
+					gameObjects[o+1].moveTo.y = gameObjects[o].moveTo.y;
+					
+					gameObjects[o].moveTo.z = F_NUM_UP(tieFighterPositions[++position]);
+					gameObjects[o+1].moveTo.z = gameObjects[o].moveTo.z;
+				}
 			}
 			drawObject(&gameObjects[o],1,1,1);
 		}
@@ -26,38 +54,70 @@ void handleInput(){
 	u8 speed = 30;
 	buttons = vbReadPad();
 	if(K_LL & buttons){
+		randomNumber += 1;
 		cam.position.x-=F_NUM_UP(speed);
 		if(cam.position.x <= F_NUM_UP(-300)) cam.position.x=F_NUM_UP(-300);
 	}
 	if(K_LR & buttons){
+		randomNumber += 2;
 		cam.position.x+=F_NUM_UP(speed);
 		if(cam.position.x >= F_NUM_UP(300)) cam.position.x=F_NUM_UP(300);
 	}
 	if(K_LD & buttons){
+		randomNumber += 3;
 		cam.position.y-=F_NUM_UP(speed);
 		if(cam.position.y <= F_NUM_UP(-180)) cam.position.y=F_NUM_UP(-180);
 	}
 	if(K_LU & buttons){
+		randomNumber += 4;
 		cam.position.y+=F_NUM_UP(speed);
-		if(cam.position.y >= F_NUM_UP(180)) cam.position.y=F_NUM_UP(180);
+		if(cam.position.y >= F_NUM_UP(580)) cam.position.y=F_NUM_UP(580);
 	}
 }
 
 void visualEffects(object* o){
-	if(o->world.z < 0) o->world.z = F_NUM_UP(3000);
+	if(o->world.z <= 0) {
+		o->world.z = F_NUM_UP(3000);
+		o->moveTo.z = F_NUM_UP(3000);
+	}
 }
 
-void moveObject(object* o, u8 d){
-	/************************
-	d is direction
-	0=don't move
-	1=move in x direction
-	2=move in y direction
-	4=move in z direction
-	************************/
-	o->world.x+=(d&0x01)?(o->speed.x):(0);	
-	o->world.y+=(d&0x02)?(o->speed.y):(0);
-	o->world.z+=(d&0x04)?(o->speed.z):(0);
+void moveObject(object* o){
+	vector3d normal,difference;
+	s32 speed;
+	//Calculate the vector from the move to position to current world position.
+	//Then normalize the vector
+	if(!isEqualVector(&o->world,&o->moveTo)){
+		subtractVector(&o->world,&o->moveTo,&difference);
+		normalizeVector(&difference,&normal);
+	}
+	//If the move to value is different then will calculate a speed based on the
+	//objects max speed in the given direction.
+	if(o->world.x != o->moveTo.x){
+		speed = F_MUL(normal.x,o->speed.x);
+		if(speed != 0 && ((speed<0)?((~speed)+1):(speed))<((difference.x<0)?((~difference.x)+1):(difference.x))){
+			o->world.x += speed;
+		}else{
+			o->world.x = o->moveTo.x;
+		}
+	}
+	if(o->world.y != o->moveTo.y){
+		speed = F_MUL(normal.y,o->speed.y);
+		if(speed != 0 && ((speed<0)?((~speed)+1):(speed))<((difference.y<0)?((~difference.y)+1):(difference.y))){
+			o->world.y += speed;
+		}else{
+			o->world.y = o->moveTo.y;
+		}
+	}
+	if(o->world.z != o->moveTo.z){
+		speed = F_MUL(normal.z,o->speed.z);
+		if(speed != 0 && ((speed<0)?((~speed)+1):(speed))<((difference.z<0)?((~difference.z)+1):(difference.z))){
+			o->world.z += speed;
+		}else{
+			o->world.z = o->moveTo.z;
+		}
+	}
+	
 	//Rotation
 	o->rotation.x += o->rotateSpeed.x;
 	if(o->rotation.x > F_NUM_UP(359)) o->rotation.x = F_SUB(o->rotation.x,F_NUM_UP(359));
@@ -71,6 +131,39 @@ void moveObject(object* o, u8 d){
 	if(o->rotation.z > F_NUM_UP(359)) o->rotation.z = F_SUB(o->rotation.z,F_NUM_UP(359));
 	if(o->rotation.z < F_NUM_UP(-359)) o->rotation.z = F_ADD(o->rotation.z,F_NUM_UP(359));
 	
+}
+
+/*********************
+See if object is currently moving
+*********************/
+u8 isMoving(object* o){
+	u8 r;
+	r=1;
+	if(isEqualVector(&o->world,&o->moveTo)){
+		r=0;
+	}
+	return r;
+}
+/*********************
+Compare two vectors
+*********************/
+u8 isEqualVector(vector3d* v1, vector3d* v2){
+	u8 r;
+	r=0;
+	if(v1->x == v2->x &&
+	   v1->y == v2->y &&
+	   v1->z == v2->z){
+		r = 1;
+	}
+	return r;
+}
+/*********************
+Subtracts two vectors
+*********************/
+void subtractVector(vector3d* vStart, vector3d* vEnd, vector3d* n){
+	n->x = vEnd->x - vStart->x;
+	n->y = vEnd->y - vStart->y;
+	n->z = vEnd->z - vStart->z;
 }
 
 /**************************************
@@ -149,6 +242,25 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 }
 
 void initObjects(){
+	u16 i;
+	for(i=0;i<MAX_GAME_OBJECTS;i++){
+		gameObjects[i].world.x = 0;
+		gameObjects[i].world.y = 0;
+		gameObjects[i].world.z = 0;
+		gameObjects[i].moveTo.x = 0;
+		gameObjects[i].moveTo.y = 0;
+		gameObjects[i].moveTo.z = 0;
+		gameObjects[i].rotation.x = 0;
+		gameObjects[i].rotation.y = 0;
+		gameObjects[i].rotation.z = 0;
+		gameObjects[i].rotateSpeed.x = 0;
+		gameObjects[i].rotateSpeed.y = 0;
+		gameObjects[i].rotateSpeed.z = 0;
+		gameObjects[i].speed.x = 0;
+		gameObjects[i].speed.y = 0;
+		gameObjects[i].speed.z = 0;
+	}
+	
 	cam.position.x = 0;
 	cam.position.y = 0;
 	cam.position.z = 0;
@@ -156,117 +268,78 @@ void initObjects(){
 	
 	gameObjectsIdx=0;
 	//Death Star Walls
-	gameObjects[gameObjectsIdx].world.x=0;
-	gameObjects[gameObjectsIdx].world.y=0;
-	gameObjects[gameObjectsIdx].world.z=0;
-	gameObjects[gameObjectsIdx].rotation.x=0;
-	gameObjects[gameObjectsIdx].rotation.y=0;
-	gameObjects[gameObjectsIdx].rotation.z=0;
-	gameObjects[gameObjectsIdx].speed.x=0;
-	gameObjects[gameObjectsIdx].speed.y=0;
-	gameObjects[gameObjectsIdx].speed.z=0;
 	gameObjects[gameObjectsIdx].objData = (objectData*)deathStarWalls;
 	gameObjectsIdx++;
 	//tie fighter
-	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(-150);
-	gameObjects[gameObjectsIdx].world.y=0;
-	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(500);
-	gameObjects[gameObjectsIdx].rotation.x=0;
-	gameObjects[gameObjectsIdx].rotation.y=F_NUM_UP(180);
-	gameObjects[gameObjectsIdx].rotation.z=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.x=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.y=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.z=0;
-	gameObjects[gameObjectsIdx].speed.x=0;
-	gameObjects[gameObjectsIdx].speed.y=0;
-	gameObjects[gameObjectsIdx].speed.z=0;
+	gameObjects[gameObjectsIdx].world.x = F_NUM_UP(-150);
+	gameObjects[gameObjectsIdx].moveTo.x = F_NUM_UP(-150);
+	gameObjects[gameObjectsIdx].world.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].rotation.y = F_NUM_UP(180);
+	gameObjects[gameObjectsIdx].speed.x = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].speed.y = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].speed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
 	gameObjectsIdx++;
 	//tie fighter wings
-	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
-	gameObjects[gameObjectsIdx].world.y=gameObjects[gameObjectsIdx-1].world.y;
-	gameObjects[gameObjectsIdx].world.z=gameObjects[gameObjectsIdx-1].world.z;
-	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
-	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
-	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
-	gameObjects[gameObjectsIdx].rotateSpeed.x=gameObjects[gameObjectsIdx-1].rotateSpeed.x;
-	gameObjects[gameObjectsIdx].rotateSpeed.y=gameObjects[gameObjectsIdx-1].rotateSpeed.y;
-	gameObjects[gameObjectsIdx].rotateSpeed.z=gameObjects[gameObjectsIdx-1].rotateSpeed.z;
-	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
-	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
-	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].world.x = gameObjects[gameObjectsIdx-1].world.x;
+	gameObjects[gameObjectsIdx].moveTo.x = gameObjects[gameObjectsIdx-1].moveTo.x;
+	gameObjects[gameObjectsIdx].world.z = gameObjects[gameObjectsIdx-1].world.z;
+	gameObjects[gameObjectsIdx].moveTo.z = gameObjects[gameObjectsIdx-1].moveTo.z;
+	gameObjects[gameObjectsIdx].rotation.y = gameObjects[gameObjectsIdx-1].rotation.y;
+	gameObjects[gameObjectsIdx].speed.x = gameObjects[gameObjectsIdx-1].speed.x;
+	gameObjects[gameObjectsIdx].speed.y = gameObjects[gameObjectsIdx-1].speed.y;
+	gameObjects[gameObjectsIdx].speed.z = gameObjects[gameObjectsIdx-1].speed.z;
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
 	gameObjectsIdx++;
 	//tie fighter
-	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(-150);
-	gameObjects[gameObjectsIdx].world.y=0;
-	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(700);
-	gameObjects[gameObjectsIdx].rotation.x=0;
-	gameObjects[gameObjectsIdx].rotation.y=F_NUM_UP(180);
-	gameObjects[gameObjectsIdx].rotation.z=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.x=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.y=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.z=0;
-	gameObjects[gameObjectsIdx].speed.x=0;
-	gameObjects[gameObjectsIdx].speed.y=0;
-	gameObjects[gameObjectsIdx].speed.z=0;
+	gameObjects[gameObjectsIdx].world.x = F_NUM_UP(-150);
+	gameObjects[gameObjectsIdx].moveTo.x = F_NUM_UP(-150);
+	gameObjects[gameObjectsIdx].world.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].rotation.y = F_NUM_UP(180);
+	gameObjects[gameObjectsIdx].speed.x = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].speed.y = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].speed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
 	gameObjectsIdx++;
 	//tie fighter wings
-	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
-	gameObjects[gameObjectsIdx].world.y=gameObjects[gameObjectsIdx-1].world.y;
-	gameObjects[gameObjectsIdx].world.z=gameObjects[gameObjectsIdx-1].world.z;
-	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
-	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
-	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
-	gameObjects[gameObjectsIdx].rotateSpeed.x=gameObjects[gameObjectsIdx-1].rotateSpeed.x;
-	gameObjects[gameObjectsIdx].rotateSpeed.y=gameObjects[gameObjectsIdx-1].rotateSpeed.y;
-	gameObjects[gameObjectsIdx].rotateSpeed.z=gameObjects[gameObjectsIdx-1].rotateSpeed.z;
-	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
-	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
-	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].world.x = gameObjects[gameObjectsIdx-1].world.x;
+	gameObjects[gameObjectsIdx].moveTo.x = gameObjects[gameObjectsIdx-1].moveTo.x;
+	gameObjects[gameObjectsIdx].world.z = gameObjects[gameObjectsIdx-1].world.z;
+	gameObjects[gameObjectsIdx].moveTo.z = gameObjects[gameObjectsIdx-1].moveTo.z;
+	gameObjects[gameObjectsIdx].rotation.y = gameObjects[gameObjectsIdx-1].rotation.y;
+	gameObjects[gameObjectsIdx].speed.x = gameObjects[gameObjectsIdx-1].speed.x;
+	gameObjects[gameObjectsIdx].speed.y = gameObjects[gameObjectsIdx-1].speed.y;
+	gameObjects[gameObjectsIdx].speed.z = gameObjects[gameObjectsIdx-1].speed.z;
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
 	gameObjectsIdx++;
 	//tie fighter
-	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(150);
-	gameObjects[gameObjectsIdx].world.y=F_NUM_UP(0);
-	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(700);
-	gameObjects[gameObjectsIdx].rotation.x=0;
-	gameObjects[gameObjectsIdx].rotation.y=F_NUM_UP(180);
-	gameObjects[gameObjectsIdx].rotation.z=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.x=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.y=0;
-	gameObjects[gameObjectsIdx].rotateSpeed.z=0;
-	gameObjects[gameObjectsIdx].speed.x=0;
-	gameObjects[gameObjectsIdx].speed.y=0;
-	gameObjects[gameObjectsIdx].speed.z=0;
+	gameObjects[gameObjectsIdx].world.x = F_NUM_UP(150);
+	gameObjects[gameObjectsIdx].moveTo.x = F_NUM_UP(150);
+	gameObjects[gameObjectsIdx].world.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].rotation.y = F_NUM_UP(180);
+	gameObjects[gameObjectsIdx].speed.x = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].speed.y = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].speed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
 	gameObjectsIdx++;
 	//tie fighter wings
-	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
-	gameObjects[gameObjectsIdx].world.y=gameObjects[gameObjectsIdx-1].world.y;
-	gameObjects[gameObjectsIdx].world.z=gameObjects[gameObjectsIdx-1].world.z;
-	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
-	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
-	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
-	gameObjects[gameObjectsIdx].rotateSpeed.x=gameObjects[gameObjectsIdx-1].rotateSpeed.x;
-	gameObjects[gameObjectsIdx].rotateSpeed.y=gameObjects[gameObjectsIdx-1].rotateSpeed.y;
-	gameObjects[gameObjectsIdx].rotateSpeed.z=gameObjects[gameObjectsIdx-1].rotateSpeed.z;
-	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
-	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
-	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].world.x = gameObjects[gameObjectsIdx-1].world.x;
+	gameObjects[gameObjectsIdx].moveTo.x = gameObjects[gameObjectsIdx-1].moveTo.x;
+	gameObjects[gameObjectsIdx].world.z = gameObjects[gameObjectsIdx-1].world.z;
+	gameObjects[gameObjectsIdx].moveTo.z = gameObjects[gameObjectsIdx-1].moveTo.z;
+	gameObjects[gameObjectsIdx].rotation.y = gameObjects[gameObjectsIdx-1].rotation.y;
+	gameObjects[gameObjectsIdx].speed.x = gameObjects[gameObjectsIdx-1].speed.x;
+	gameObjects[gameObjectsIdx].speed.y = gameObjects[gameObjectsIdx-1].speed.y;
+	gameObjects[gameObjectsIdx].speed.z = gameObjects[gameObjectsIdx-1].speed.z;
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
 	gameObjectsIdx++;
 	//Wall Effects
-	gameObjects[gameObjectsIdx].world.x=0;
-	gameObjects[gameObjectsIdx].world.y=0;
-	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(3000);
-	gameObjects[gameObjectsIdx].rotation.x=0;
-	gameObjects[gameObjectsIdx].rotation.y=0;
-	gameObjects[gameObjectsIdx].rotation.z=0;
-	gameObjects[gameObjectsIdx].speed.x=0;
-	gameObjects[gameObjectsIdx].speed.y=0;
-	gameObjects[gameObjectsIdx].speed.z=F_NUM_UP(FLYING_SPEED);
+	gameObjects[gameObjectsIdx].world.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].speed.z = FLYING_SPEED;
 	gameObjects[gameObjectsIdx].objData = (objectData*)wallEffects;
 	gameObjectsIdx++;
 }
