@@ -12,7 +12,10 @@ int main(){
 
 		for(o=0; o<gameObjectsIdx; o++){
 			moveObject(&gameObjects[o],7);
-			drawObject(&gameObjects[o],20,20,20);
+			if(gameObjects[o].objData == wallEffects){
+				visualEffects(&gameObjects[o]);
+			}
+			drawObject(&gameObjects[o],1,1,1);
 		}
 
 		screenControl();
@@ -20,25 +23,28 @@ int main(){
 }
 
 void handleInput(){
+	u8 speed = 30;
 	buttons = vbReadPad();
-	if(K_RD & buttons){
-		cam.position.z-=F_NUM_UP(20);
-	}
-	if(K_RU & buttons){
-		cam.position.z+=F_NUM_UP(20);
-	}
 	if(K_LL & buttons){
-		cam.position.x-=F_NUM_UP(20);
+		cam.position.x-=F_NUM_UP(speed);
+		if(cam.position.x <= F_NUM_UP(-300)) cam.position.x=F_NUM_UP(-300);
 	}
 	if(K_LR & buttons){
-		cam.position.x+=F_NUM_UP(20);
+		cam.position.x+=F_NUM_UP(speed);
+		if(cam.position.x >= F_NUM_UP(300)) cam.position.x=F_NUM_UP(300);
 	}
 	if(K_LD & buttons){
-		cam.position.y-=F_NUM_UP(20);
+		cam.position.y-=F_NUM_UP(speed);
+		if(cam.position.y <= F_NUM_UP(-180)) cam.position.y=F_NUM_UP(-180);
 	}
 	if(K_LU & buttons){
-		cam.position.y+=F_NUM_UP(20);
+		cam.position.y+=F_NUM_UP(speed);
+		if(cam.position.y >= F_NUM_UP(180)) cam.position.y=F_NUM_UP(180);
 	}
+}
+
+void visualEffects(object* o){
+	if(o->world.z < 0) o->world.z = F_NUM_UP(3000);
 }
 
 void moveObject(object* o, u8 d){
@@ -52,6 +58,19 @@ void moveObject(object* o, u8 d){
 	o->world.x+=(d&0x01)?(o->speed.x):(0);	
 	o->world.y+=(d&0x02)?(o->speed.y):(0);
 	o->world.z+=(d&0x04)?(o->speed.z):(0);
+	//Rotation
+	o->rotation.x += o->rotateSpeed.x;
+	if(o->rotation.x > F_NUM_UP(359)) o->rotation.x = F_SUB(o->rotation.x,F_NUM_UP(359));
+	if(o->rotation.x < F_NUM_UP(-359)) o->rotation.x = F_ADD(o->rotation.x,F_NUM_UP(359));
+	
+	o->rotation.y += o->rotateSpeed.y;
+	if(o->rotation.y > F_NUM_UP(359)) o->rotation.y = F_SUB(o->rotation.y,F_NUM_UP(359));
+	if(o->rotation.y < F_NUM_UP(-359)) o->rotation.y = F_ADD(o->rotation.y,F_NUM_UP(359));
+	
+	o->rotation.z += o->rotateSpeed.z;
+	if(o->rotation.z > F_NUM_UP(359)) o->rotation.z = F_SUB(o->rotation.z,F_NUM_UP(359));
+	if(o->rotation.z < F_NUM_UP(-359)) o->rotation.z = F_ADD(o->rotation.z,F_NUM_UP(359));
+	
 }
 
 /**************************************
@@ -72,23 +91,19 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 	vector3d v1,v2;
 	vector3d vt;
 	u8 verts,i;
-	s32* v;
-	s32* vertEnd;
+	s32 v,firstV;
 	
-	o->p = F_SUB(o->world.z,cam.position.z);
+	size=o->objData->size;//total elements in array
+	verts=o->objData->faceSize;//total vertices per section
 	
-	size=o->objData.data[0];//total elements in array
-	verts=o->objData.data[1];//total vertices per section
-	
-	v=(s32*)(o->objData.data+2);//right before first vertex
-	vertEnd=(s32*)(o->objData.data+size);//last vertex
-	
+	v=0;//right before first vertex
 	worldMatrix(m_world3d,o,xscale,yscale,zscale);
 
-	while(v < vertEnd){
-		v1.x = (v)[0];
-		v1.y = (++v)[0];
-		v1.z = (++v)[0];
+	while(v < size){
+		firstV = v;
+		v1.x = F_NUM_UP(o->objData->data[v]);
+		v1.y = F_NUM_UP(o->objData->data[++v]);
+		v1.z = F_NUM_UP(o->objData->data[++v]);
 		v1.w = F_NUM_UP(1);
 		
 		matrix3dxVertex(&v1,m_world3d,&vt);
@@ -98,9 +113,9 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 		v1.z = vt.z;
 
 		for(i=1; i<verts; i++){			
-			v2.x = (++v)[0];
-			v2.y = (++v)[0];
-			v2.z = (++v)[0];
+			v2.x = F_NUM_UP(o->objData->data[++v]);
+			v2.y = F_NUM_UP(o->objData->data[++v]);
+			v2.z = F_NUM_UP(o->objData->data[++v]);
 			v2.w = F_NUM_UP(1);
 			
 			matrix3dxVertex(&v2,m_world3d,&vt);
@@ -109,25 +124,26 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 			v2.y = vt.y;
 			v2.z = vt.z;
 			
-			myDrawLine(v1,v2,3,o);
+			drawLine(&v1,&v2,3,o);
 			
 			v1.x = v2.x;
 			v1.y = v2.y;
 			v1.z = v2.z;
 		}
 		//This causes a final line to be drawn back to the starting vertex
-		v2.x = (v-(((verts<<1) + verts)-1))[0];
-		v2.y = (v-(((verts<<1) + verts)-2))[0];
-		v2.z = (v-(((verts<<1) + verts)-3))[0];
-		
-		matrix3dxVertex(&v2,m_world3d,&vt);
-		
-		v2.x = vt.x;
-		v2.y = vt.y;
-		v2.z = vt.z;
-		
-		myDrawLine(v1,v2,3,o);
-		
+		if(verts>2){
+			v2.x = F_NUM_UP(o->objData->data[firstV]);
+			v2.y = F_NUM_UP(o->objData->data[firstV+1]);
+			v2.z = F_NUM_UP(o->objData->data[firstV+2]);
+			
+			matrix3dxVertex(&v2,m_world3d,&vt);
+			
+			v2.x = vt.x;
+			v2.y = vt.y;
+			v2.z = vt.z;
+			
+			drawLine(&v1,&v2,3,o);
+		}
 		v++;
 	}
 }
@@ -138,19 +154,33 @@ void initObjects(){
 	cam.position.z = 0;
 	cam.d = F_NUM_UP(128);
 	
-	//tie fighter body
 	gameObjectsIdx=0;
-	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(-200);
+	//Death Star Walls
+	gameObjects[gameObjectsIdx].world.x=0;
+	gameObjects[gameObjectsIdx].world.y=0;
+	gameObjects[gameObjectsIdx].world.z=0;
+	gameObjects[gameObjectsIdx].rotation.x=0;
+	gameObjects[gameObjectsIdx].rotation.y=0;
+	gameObjects[gameObjectsIdx].rotation.z=0;
+	gameObjects[gameObjectsIdx].speed.x=0;
+	gameObjects[gameObjectsIdx].speed.y=0;
+	gameObjects[gameObjectsIdx].speed.z=0;
+	gameObjects[gameObjectsIdx].objData = (objectData*)deathStarWalls;
+	gameObjectsIdx++;
+	//tie fighter
+	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(-150);
 	gameObjects[gameObjectsIdx].world.y=0;
 	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(500);
 	gameObjects[gameObjectsIdx].rotation.x=0;
-	gameObjects[gameObjectsIdx].rotation.y=0;
+	gameObjects[gameObjectsIdx].rotation.y=F_NUM_UP(180);
 	gameObjects[gameObjectsIdx].rotation.z=0;
-	gameObjects[gameObjectsIdx].p=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.x=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.y=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.z=0;
 	gameObjects[gameObjectsIdx].speed.x=0;
 	gameObjects[gameObjectsIdx].speed.y=0;
 	gameObjects[gameObjectsIdx].speed.z=0;
-	gameObjects[gameObjectsIdx].objData.data = tieFighter;
+	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
@@ -159,37 +189,85 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
 	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
 	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
-	gameObjects[gameObjectsIdx].p=gameObjects[gameObjectsIdx-1].p;
+	gameObjects[gameObjectsIdx].rotateSpeed.x=gameObjects[gameObjectsIdx-1].rotateSpeed.x;
+	gameObjects[gameObjectsIdx].rotateSpeed.y=gameObjects[gameObjectsIdx-1].rotateSpeed.y;
+	gameObjects[gameObjectsIdx].rotateSpeed.z=gameObjects[gameObjectsIdx-1].rotateSpeed.z;
 	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
 	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
 	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
-	gameObjects[gameObjectsIdx].objData.data = tieFighterWings;
+	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
 	gameObjectsIdx++;
-	//tie fighter body
-	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(200);
-	gameObjects[gameObjectsIdx].world.y=F_NUM_UP(-100);
-	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(500);
+	//tie fighter
+	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(-150);
+	gameObjects[gameObjectsIdx].world.y=0;
+	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(700);
+	gameObjects[gameObjectsIdx].rotation.x=0;
+	gameObjects[gameObjectsIdx].rotation.y=F_NUM_UP(180);
+	gameObjects[gameObjectsIdx].rotation.z=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.x=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.y=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.z=0;
+	gameObjects[gameObjectsIdx].speed.x=0;
+	gameObjects[gameObjectsIdx].speed.y=0;
+	gameObjects[gameObjectsIdx].speed.z=0;
+	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
+	gameObjectsIdx++;
+	//tie fighter wings
+	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
+	gameObjects[gameObjectsIdx].world.y=gameObjects[gameObjectsIdx-1].world.y;
+	gameObjects[gameObjectsIdx].world.z=gameObjects[gameObjectsIdx-1].world.z;
+	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
+	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
+	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
+	gameObjects[gameObjectsIdx].rotateSpeed.x=gameObjects[gameObjectsIdx-1].rotateSpeed.x;
+	gameObjects[gameObjectsIdx].rotateSpeed.y=gameObjects[gameObjectsIdx-1].rotateSpeed.y;
+	gameObjects[gameObjectsIdx].rotateSpeed.z=gameObjects[gameObjectsIdx-1].rotateSpeed.z;
+	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
+	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
+	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
+	gameObjectsIdx++;
+	//tie fighter
+	gameObjects[gameObjectsIdx].world.x=F_NUM_UP(150);
+	gameObjects[gameObjectsIdx].world.y=F_NUM_UP(0);
+	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(700);
+	gameObjects[gameObjectsIdx].rotation.x=0;
+	gameObjects[gameObjectsIdx].rotation.y=F_NUM_UP(180);
+	gameObjects[gameObjectsIdx].rotation.z=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.x=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.y=0;
+	gameObjects[gameObjectsIdx].rotateSpeed.z=0;
+	gameObjects[gameObjectsIdx].speed.x=0;
+	gameObjects[gameObjectsIdx].speed.y=0;
+	gameObjects[gameObjectsIdx].speed.z=0;
+	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
+	gameObjectsIdx++;
+	//tie fighter wings
+	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
+	gameObjects[gameObjectsIdx].world.y=gameObjects[gameObjectsIdx-1].world.y;
+	gameObjects[gameObjectsIdx].world.z=gameObjects[gameObjectsIdx-1].world.z;
+	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
+	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
+	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
+	gameObjects[gameObjectsIdx].rotateSpeed.x=gameObjects[gameObjectsIdx-1].rotateSpeed.x;
+	gameObjects[gameObjectsIdx].rotateSpeed.y=gameObjects[gameObjectsIdx-1].rotateSpeed.y;
+	gameObjects[gameObjectsIdx].rotateSpeed.z=gameObjects[gameObjectsIdx-1].rotateSpeed.z;
+	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
+	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
+	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
+	gameObjectsIdx++;
+	//Wall Effects
+	gameObjects[gameObjectsIdx].world.x=0;
+	gameObjects[gameObjectsIdx].world.y=0;
+	gameObjects[gameObjectsIdx].world.z=F_NUM_UP(3000);
 	gameObjects[gameObjectsIdx].rotation.x=0;
 	gameObjects[gameObjectsIdx].rotation.y=0;
 	gameObjects[gameObjectsIdx].rotation.z=0;
-	gameObjects[gameObjectsIdx].p=0;
 	gameObjects[gameObjectsIdx].speed.x=0;
 	gameObjects[gameObjectsIdx].speed.y=0;
-	gameObjects[gameObjectsIdx].speed.z=0;
-	gameObjects[gameObjectsIdx].objData.data = tieFighter;
-	gameObjectsIdx++;
-	//tie fighter wings
-	gameObjects[gameObjectsIdx].world.x=gameObjects[gameObjectsIdx-1].world.x;
-	gameObjects[gameObjectsIdx].world.y=gameObjects[gameObjectsIdx-1].world.y;
-	gameObjects[gameObjectsIdx].world.z=gameObjects[gameObjectsIdx-1].world.z;
-	gameObjects[gameObjectsIdx].rotation.x=gameObjects[gameObjectsIdx-1].rotation.x;
-	gameObjects[gameObjectsIdx].rotation.y=gameObjects[gameObjectsIdx-1].rotation.y;
-	gameObjects[gameObjectsIdx].rotation.z=gameObjects[gameObjectsIdx-1].rotation.z;
-	gameObjects[gameObjectsIdx].p=gameObjects[gameObjectsIdx-1].p;
-	gameObjects[gameObjectsIdx].speed.x=gameObjects[gameObjectsIdx-1].speed.x;
-	gameObjects[gameObjectsIdx].speed.y=gameObjects[gameObjectsIdx-1].speed.y;
-	gameObjects[gameObjectsIdx].speed.z=gameObjects[gameObjectsIdx-1].speed.z;
-	gameObjects[gameObjectsIdx].objData.data = tieFighterWings;
+	gameObjects[gameObjectsIdx].speed.z=F_NUM_UP(FLYING_SPEED);
+	gameObjects[gameObjectsIdx].objData = (objectData*)wallEffects;
 	gameObjectsIdx++;
 }
 
@@ -248,6 +326,10 @@ void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz){
 	ax = F_NUM_DN((o->rotation.x<0)?(F_NUM_UP(360)+o->rotation.x):(o->rotation.x));
 	ay = F_NUM_DN((o->rotation.y<0)?(F_NUM_UP(360)+o->rotation.y):(o->rotation.y));
 	az = F_NUM_DN((o->rotation.z<0)?(F_NUM_UP(360)+o->rotation.z):(o->rotation.z));
+	
+	if(ax>359)ax=0;
+	if(ay>359)ay=0;
+	if(az>359)az=0;
 	
 	m[0][0]=F_MUL(F_MUL(F_NUM_UP(sx),F_COSINE(ay)),F_COSINE(az));
 	m[0][1]=F_MUL(F_MUL(F_NUM_UP(sx),F_COSINE(ay)),F_SINE(az));
@@ -487,14 +569,21 @@ void vbInit(){
 Draws a pixel onto the screen
 *******************************/
 void inline drawPoint(s32 x, s32 y, u8 color, s32 p){
+
+	if(y<0 || y>SCREEN_HEIGHT) return;
+	if(x<0 || x>SCREEN_WIDTH) return;
+	
 	s32 loffset,roffset;
 	u8 yleft;
+	
+	//Put a cap on parallax
+	if(p>20) p=20;
 	
 	loffset = (((x-p)<<4) + (y>>4));
 	roffset = (loffset + (p<<5));
 	
-	if(loffset>0x5FFF || loffset<0) return;
-	if(roffset>0x5FFF || roffset<0) return;
+	if(loffset>0x1800 || loffset<0) return;
+	if(roffset>0x1800 || roffset<0) return;
 	
 	color &= 0x03;
 	
@@ -505,132 +594,71 @@ void inline drawPoint(s32 x, s32 y, u8 color, s32 p){
 }
 
 /*******************************
-Bresenham Line Algorithm
+My Line Algorithm (Brezenham based)
 *******************************/
-void drawLine(vector3d v1, vector3d v2, u8 color, object* o){
-	s32 vx,vy,vx2,vy2;
-	s32 dx, dy;
-	s16 e, e1, e2, sx, sy, pixels, loop;
+void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
+	s32 vx,vy,vz,vx2,vy2;
+	s32 dx, dy, dz;
+	s32 sx,sy,sz,p,pixels,err;
 
 	//z clipping(clips whole line should improve in future)
-	if(v1.z<=(F_NUM_DN(cam.position.z))) return;
-	if(v2.z<=(F_NUM_DN(cam.position.z))) return;
+	if(v1->z<=(F_NUM_DN(cam.position.z))) return;
+	if(v2->z<=(F_NUM_DN(cam.position.z))) return;
 	
 	//Scale everything back to integers and apply projection
-	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.x,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
-	vy=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.y,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
+	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1->x,cam.d),F_ADD(cam.d,v1->z)),F_NUM_UP(SCREEN_WIDTH>>1)));
+	vy=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1->y,cam.d),F_ADD(cam.d,v1->z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
 
-	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.x,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
-	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.y,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
-
-
-	/**************************
-	The following algorithm was taken from stack overflow
-	http://stackoverflow.com/questions/5186939/algorithm-for-drawing-a-4-connected-line
-	**************************/
-	dx=vx2-vx;
-	dx=((dx >> 31))?(~dx + 1):(dx); //absolute value
-	dy=vy2-vy;
-	dy=((dy >> 31))?(~dy + 1):(dy);
+	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2->x,cam.d),F_ADD(cam.d,v2->z)),F_NUM_UP(SCREEN_WIDTH>>1)));
+	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2->y,cam.d),F_ADD(cam.d,v2->z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
 	
-	sx = (vx<vx2)?(1):(-1);
-	sy = (vy<vy2)?(1):(-1);
+	dx=(~(vx - vx2)+1);
+	dy=(~(vy - vy2)+1);
+	dz=(~(F_NUM_DN(F_SUB(v1->z,v2->z))+1));
 	
-	pixels=dx+dy; //pixels
-	e=0;
+	sx=(dx<0)?(-1):(1);
+	sy=(dy<0)?(-1):(1);
+	sz=(dz<0)?(-1):(1);
+	
+	if(dx<0) dx=(~dx)+1;
+	if(dy<0) dy=(~dy)+1;
+	if(dz<0) dz=(~dz)+1;
+
+	vz=F_NUM_DN(v1->z);
+	
+	pixels=((dx>dy)?(dx):(dy))+1;
 	
 	CACHE_ENABLE;
-	for(loop=0; loop<pixels; loop++){
-		drawPoint(vx,vy,color,(F_NUM_DN(o->p)>>PARALLAX_SHIFT));
-		e1=e+dy;
-		e2=e-dx;
-		if(((e1>>15)?(~e1 + 1):(e1)) < ((e2>>15)?(~e2 + 1):(e2))){
+	if(dy<dx){
+		err=(dx>>1);
+		sz=(sz)*(F_NUM_UP(dz)/((dx==0)?(1):(dx)));
+		vz=F_NUM_UP(vz);
+		for(p=0;p<pixels;p++){
+			drawPoint(vx,vy,color,(F_NUM_DN(vz)>>PARALLAX_SHIFT));
+			err+=dy;
+			if(err>dx){
+				vy+=sy;
+				err-=dx;
+			}
+			vz+=sz;
 			vx+=sx;
-			e=e1;
-		}else{
+		}
+	}else{
+		err=(dy>>1);
+		sz=(sz)*(F_NUM_UP(dz)/((dy==0)?(1):(dy)));
+		vz=F_NUM_UP(vz);
+		for(p=0;p<pixels;p++){
+			drawPoint(vx,vy,color,(F_NUM_DN(vz)>>PARALLAX_SHIFT));
+			err+=dx;
+			if(err>dy){
+				vx+=sx;
+				err-=dy;
+			}
+			vz+=sz;
 			vy+=sy;
-			e=e2;
 		}
 	}
 	CACHE_DISABLE;
-}
-
-/*******************************
-My Line Algorithm
-*******************************/
-void myDrawLine(vector3d v1, vector3d v2, u8 color, object* o){
-	s32 vx,vy,vx2,vy2;
-	s32 dx, dy, dmin;
-	s8 shift,sy,sx,p;
-
-	//z clipping(clips whole line should improve in future)
-	if(v1.z<=(F_NUM_DN(cam.position.z))) return;
-	if(v2.z<=(F_NUM_DN(cam.position.z))) return;
-	
-	//Scale everything back to integers and apply projection
-	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.x,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
-	vy=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1.y,cam.d),F_ADD(cam.d,v1.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
-
-	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.x,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_WIDTH>>1)));
-	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2.y,cam.d),F_ADD(cam.d,v2.z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
-
-	/****************
-	Get dx and dy.
-	"Normalize" dx/dy by converting to next power of 2 and shifting until dx or dy = 1;
-	Calculate last line segment based on normalized dx/dy, divide by 2 and add that to the larger of dx and dy
-	****************/
-	dx=(~(vx-vx2))+1;
-	dy=(~(vy-vy2))+1;
-	
-	sy=(dy<0)?(-1):(1);
-	sx=(dx<0)?(-1):(1);
-	
-	//Get next power of 2
-	if(dx<0) dx=(~dx)+1;
-	if(dy<0) dy=(~dy)+1;
-	
-	dx = (dx ^ ~dx) + 1;
-	dy = (dy ^ ~dy) + 1;
-	dmin = (dx<dy)?(dx):(dy);
-	
-	//Get number of bits to shift to normalize
-	switch(dmin){
-		case(0):shift = 0;break;
-		case(2):shift = 1;break;
-		case(4):shift = 2;break;
-		case(8):shift = 3;break;
-		case(16):shift = 4;break;
-		case(32):shift = 5;break;
-		case(64):shift = 6;break;
-		case(128):shift = 7;break;
-		case(256):shift = 8;break;
-		case(512):shift = 9;break;
-	}
-	//These are now normalized for 1 pixel
-	dx = dx >> shift;
-	dy = dy >> shift;
-	
-	//CACHE_ENABLE;
-	if(dx<dy){
-		while(vy!=vy2){
-			for(p=0;p<dy;p++){
-				drawPoint(vx,vy,3,o->p);
-				vy+=sy;
-				if(vy==vy2)break;
-			}
-			if(vx!=vx2) vx+=sx;
-		}
-	}else{
-		while(vx!=vx2){
-			for(p=0;p<dx;p++){
-				drawPoint(vx,vy,3,o->p);
-				vx+=sx;
-				if(vx==vx2)break;
-			}
-			if(vy!=vy2) vy+=sy;
-		}
-	}
-	//CACHE_DISABLE;
 }
 
 /*******************************
@@ -683,27 +711,6 @@ void normalizeVector(vector3d* v, vector3d* n){
 	n->x = F_DIV(v->x,length);
 	n->y = F_DIV(v->y,length);
 	n->z = F_DIV(v->z,length);
-}
-
-/***********************************
-Copy drawing data into frame buffers
-***********************************/
-void copyBuffer(u32* buffer, u32* fBuffer, u32 buffSize){
-	u32* p1 = fBuffer;
-	u32* p2 = buffer;
-	u32* ps = p1 + buffSize;
-	while(p1<ps){
-		p1[0]=p2[0];
-		p1[1]=p2[1];
-		p1[2]=p2[2];
-		p1[3]=p2[3];
-		p1[4]=p2[4];
-		p1[5]=p2[5];
-		p1[6]=p2[6];
-		p1[7]=p2[7];
-		p1+=8;
-		p2+=8;
-	}
 }
 
 /*************************************

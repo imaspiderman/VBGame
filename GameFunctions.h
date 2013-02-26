@@ -29,6 +29,7 @@ Defines
 #define PARALLAX_MAX 31
 #define PARALLAX_SHIFT 8
 #define ROTATION_SPEED F_NUM_UP(6)
+#define FLYING_SPEED F_NUM_UP(-50)
 /*******************************
 Variables
 *******************************/
@@ -44,7 +45,7 @@ u32* nextFrameBuffer=(u32*)0x00000000;
 //Game camera
 camera cam;
 
-#define MAX_GAME_OBJECTS 256
+#define MAX_GAME_OBJECTS 128
 object gameObjects[MAX_GAME_OBJECTS];
 u8 gameObjectsIdx;
 
@@ -75,8 +76,7 @@ Functions
 Core Drawing Functions
 *********************************************************/
 void inline drawPoint(s32 x, s32 y, u8 color, s32 p);
-void drawLine(vector3d v1, vector3d v2, u8 color, object* o);
-void myDrawLine(vector3d v1, vector3d v2, u8 color, object* o);
+void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o);
 void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale);
 void emptyDrawQueue();
 /********************************************************/
@@ -114,8 +114,7 @@ Game functions
 *********************************************************/
 void initObjects();
 void moveObject(object* o, u8 d);
-void moveCrossHairs();
-void vpuHnd(void);
+void visualEffects(object* o);
 /********************************************************/
 
 

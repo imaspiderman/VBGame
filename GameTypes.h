@@ -14,8 +14,9 @@ typedef struct{
 } vector3d;//represents a vector or coordinate.
 
 typedef struct{
-	u8 type;//OBJDATA_T_XXX
-	const s32* data;//pointer to data
+	s32 size;
+	s32 faceSize;
+	const s32 data[];
 } objectData;
 
 typedef struct{
@@ -26,9 +27,9 @@ typedef struct object{
 	objectAttributes attributes;
 	vector3d world;
 	vector3d rotation;
+	vector3d rotateSpeed;
 	vector3d speed;
-	s32 p;//parallax
-	objectData objData;
+	objectData* objData;
 } object;
 
 typedef struct{
