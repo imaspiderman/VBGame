@@ -1,13 +1,184 @@
 #include "GameFunctions.h"
 #include "GameData.h"
 #include "GameTypes.h"
+#include "Music.h"
+
+//Music stuff
+#define MAX_NOTE_LENGTH 1600
+midiTrack t1 = {0,(midiNote*)track_0,1,0,0xFF};
+#define NUM_TRACKS 1
+midiTrack trackTable[NUM_TRACKS];
+
+void DoMusic(u16 timerCount){
+	u8 i;
+	for(i=0; i<NUM_TRACKS; i++){
+		trackTable[i].currNote = 0;
+	}
+	musicTick = 0;
+	timer_freq(1);
+	timer_set(timerCount);
+	timer_enable(1);
+	timer_int(1);
+}
+
+void timeHnd(void){
+	u8 tr,doTimer;
+	timer_int(0);
+	timer_enable(0);
+	timer_clearstat();
+	
+	for(tr=0; tr<NUM_TRACKS; tr++){
+		if(trackTable[tr].play == 0) continue;
+		if(trackTable[tr].data[trackTable[tr].currNote].tickPosition == musicTick && 
+		   trackTable[tr].data[trackTable[tr].currNote].onoff == 0x09){//Start note
+		    while(trackTable[tr].data[trackTable[tr].currNote+1].tickPosition == musicTick && //Look for the last note in a cord and play that one.
+			      trackTable[tr].data[trackTable[tr].currNote+1].onoff == 0x09) trackTable[tr].currNote++;
+			SND_REGS[tr].SxFQH=(FREQUENCY[trackTable[tr].data[trackTable[tr].currNote].note]>>8) & 0xFF;
+			SND_REGS[tr].SxFQL=FREQUENCY[trackTable[tr].data[trackTable[tr].currNote].note] & 0xFF;
+			SND_REGS[tr].SxLRV=trackTable[tr].volume;
+			SND_REGS[tr].SxRAM = tr;
+			trackTable[tr].offNote = 0;
+			SND_REGS[tr].SxINT = 0x9F;
+		}
+		/*some midi's don't have off notes so this sets a max length for a given note*/
+		trackTable[tr].offNote++;
+		if(trackTable[tr].offNote > MAX_NOTE_LENGTH){
+			SND_REGS[tr].SxINT = 0x00;
+		}
+
+		while(trackTable[tr].data[trackTable[tr].currNote].tickPosition <= musicTick && 
+		      trackTable[tr].data[trackTable[tr].currNote].tickPosition != 0xFFFFFFFF){
+			trackTable[tr].currNote++;
+		}
+		
+		if(trackTable[tr].data[trackTable[tr].currNote].tickPosition == 0xFFFFFFFF){
+			trackTable[tr].play = 0;
+			trackTable[tr].currNote = 0;
+			SND_REGS[tr].SxINT=0;
+		}
+	}
+	musicTick++;
+	doTimer = 0x00;
+	for(tr=0; tr<NUM_TRACKS; tr++){
+		if(trackTable[tr].play == 1) doTimer = 0x01;
+	}
+	if(doTimer){
+		timer_int(1);
+		timer_enable(1);
+	}
+}
+
+void intro(){
+	object S,T,A,R,W,A2,R2,S2;
+	s32 xspeed,yspeed,zspeed;
+	
+	xspeed = F_NUM_UP(10);
+	yspeed = F_NUM_UP(10);
+	zspeed = F_NUM_UP(10);
+	
+	initObject(&S);
+	initObject(&T);
+	initObject(&A);
+	initObject(&R);
+	initObject(&W);
+	initObject(&A2);
+	initObject(&R2);
+	initObject(&S2);
+	
+	S.objData = (objectData*)logoLetter_S;
+	S.world.z = F_NUM_UP(3000);
+	S.speed.x = xspeed;
+	S.speed.z = zspeed;
+	S.moveTo.z = F_NUM_UP(20);
+	S.moveTo.x = F_NUM_UP(-120);
+	
+	T.objData = (objectData*)logoLetter_T;
+	T.world.z = F_NUM_UP(3000);
+	T.speed.x = xspeed;
+	T.speed.z = zspeed;
+	T.moveTo.z = F_NUM_UP(20);
+	T.moveTo.x = F_NUM_UP(-120);
+	
+	A.objData = (objectData*)logoLetter_A;
+	A.world.z = F_NUM_UP(3000);
+	A.speed.z = zspeed;
+	A.moveTo.z = F_NUM_UP(20);
+	
+	R.objData = (objectData*)logoLetter_R;
+	R.world.z = F_NUM_UP(3000);
+	R.speed.z = zspeed;
+	R.speed.x = xspeed;
+	R.moveTo.z = F_NUM_UP(20);
+	R.moveTo.x = F_NUM_UP(85);
+	
+	W.objData = (objectData*)logoLetter_W;
+	W.world.z = F_NUM_UP(3000);
+	W.speed.z = zspeed;
+	W.speed.x = xspeed;
+	W.speed.y = yspeed;
+	W.moveTo.z = F_NUM_UP(20);
+	W.moveTo.x = F_NUM_UP(-110);
+	W.moveTo.y = F_NUM_UP(60);
+	
+	A2.objData = (objectData*)logoLetter_A;
+	A2.world.z = F_NUM_UP(3000);
+	A2.speed.x = xspeed;
+	A2.speed.y = yspeed;
+	A2.speed.z = zspeed;
+	A2.moveTo.z = F_NUM_UP(20);
+	A2.moveTo.x = F_NUM_UP(-45);
+	A2.moveTo.y = F_NUM_UP(60);
+	
+	R2.objData = (objectData*)logoLetter_R2;
+	R2.world.z = F_NUM_UP(3000);
+	R2.speed.x = xspeed;
+	R2.speed.y = yspeed;
+	R2.speed.z = zspeed;
+	R2.moveTo.z = F_NUM_UP(20);
+	R2.moveTo.x = F_NUM_UP(40);
+	R2.moveTo.y = F_NUM_UP(60);
+	
+	S2.objData = (objectData*)logoLetter_S2;
+	S2.world.z = F_NUM_UP(3000);
+	S2.speed.x = xspeed;
+	S2.speed.y = yspeed;
+	S2.speed.z = zspeed;
+	S2.moveTo.z = F_NUM_UP(20);
+	S2.moveTo.x = F_NUM_UP(80);
+	S2.moveTo.y = F_NUM_UP(60);
+	
+	DoMusic(52);
+	while(!(vbReadPad() & K_ANY)){
+		moveObject(&S);
+		moveObject(&T);
+		moveObject(&A);
+		moveObject(&R);
+		moveObject(&W);
+		moveObject(&A2);
+		moveObject(&R2);
+		moveObject(&S2);
+		
+		drawObject(&S,2,2,2);
+		drawObject(&T,2,2,2);
+		drawObject(&A,2,2,2);
+		drawObject(&R,2,2,2);
+		drawObject(&W,2,2,2);
+		drawObject(&A2,2,2,2);
+		drawObject(&R2,2,2,2);
+		drawObject(&S2,2,2,2);
+		
+		screenControl();
+	}
+}
 
 int main(){
 	u8 o;
 	u16 position;
 	
 	vbInit();
+	initMusic();
 	initObjects();
+	intro();
 	while(1){
 		handleInput();
 		
@@ -48,6 +219,22 @@ int main(){
 
 		screenControl();
 	}
+}
+
+void initMusic(){
+	u16 i;
+	
+	SSTOP = 0;
+	
+	for(i=0;i<32;i++)WAVEDATA1[i<<2] = TRUMPET[i];//Instrument
+
+	SSTOP = 1;
+	SND_REGS[0].SxEV0 = 0xFC;         	// No fadeout; volume is constant.
+    SND_REGS[0].SxEV1 = 0x02;         	// Repeat it forever.
+	SND_REGS[0].SxRAM = 0x00;
+	SND_REGS[0].SxFQH = 0x00;
+	SND_REGS[0].SxFQL = 0x00;
+	SND_REGS[0].SxLRV = 0x33;
 }
 
 void handleInput(){
@@ -241,24 +428,28 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 	}
 }
 
+void inline initObject(object* o){
+	o->world.x = 0;
+	o->world.y = 0;
+	o->world.z = 0;
+	o->moveTo.x = 0;
+	o->moveTo.y = 0;
+	o->moveTo.z = 0;
+	o->rotation.x = 0;
+	o->rotation.y = 0;
+	o->rotation.z = 0;
+	o->rotateSpeed.x = 0;
+	o->rotateSpeed.y = 0;
+	o->rotateSpeed.z = 0;
+	o->speed.x = 0;
+	o->speed.y = 0;
+	o->speed.z = 0;
+}
+
 void initObjects(){
 	u16 i;
 	for(i=0;i<MAX_GAME_OBJECTS;i++){
-		gameObjects[i].world.x = 0;
-		gameObjects[i].world.y = 0;
-		gameObjects[i].world.z = 0;
-		gameObjects[i].moveTo.x = 0;
-		gameObjects[i].moveTo.y = 0;
-		gameObjects[i].moveTo.z = 0;
-		gameObjects[i].rotation.x = 0;
-		gameObjects[i].rotation.y = 0;
-		gameObjects[i].rotation.z = 0;
-		gameObjects[i].rotateSpeed.x = 0;
-		gameObjects[i].rotateSpeed.y = 0;
-		gameObjects[i].rotateSpeed.z = 0;
-		gameObjects[i].speed.x = 0;
-		gameObjects[i].speed.y = 0;
-		gameObjects[i].speed.z = 0;
+		initObject(&gameObjects[i]);
 	}
 	
 	cam.position.x = 0;
@@ -637,6 +828,10 @@ void vbInit(){
 	HW_REGS[WCR] = 1;
 	
 	VIP_REGS[FRMCYC] = 0;
+	
+	tim_vector = (u32)timeHnd;
+	
+	trackTable[0] = t1;
 }
 /*******************************
 Draws a pixel onto the screen

@@ -117,9 +117,12 @@ void vbInit();
 Game functions
 *********************************************************/
 void initObjects();
+void inline initObject(object* o);
 void moveObject(object* o);
 u8 isMoving(object* o);
 void visualEffects(object* o);
+void DoSound(u16 timerCount);
+void timeHnd(void);
 /********************************************************/
 
 

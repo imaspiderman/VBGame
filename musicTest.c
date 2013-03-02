@@ -5,10 +5,8 @@
 
 u32 soundStart = 0;
 
-midiTrack t1 = {0,(midiNote*)track_1,1,0,0x77};
-midiTrack t2 = {0,(midiNote*)track_2,1,0,0x77};
-midiTrack t3 = {0,(midiNote*)track_5,1,0,0x77};
-#define NUM_TRACKS 3
+midiTrack t1 = {0,(midiNote*)track_0,1,0,0x77};
+#define NUM_TRACKS 1
 midiTrack trackTable[NUM_TRACKS];
 
 void DoSound(u16 timerCount){
@@ -21,6 +19,8 @@ void DoSound(u16 timerCount){
 	timer_set(timerCount);
 	timer_enable(1);
 	timer_int(1);
+	
+	HW_REGS[BKCOL] = ~HW_REGS[BKCOL];
 }
 
 void timeHnd(void){
@@ -82,9 +82,7 @@ void vbInit(){
 	
 	tim_vector = (u32)timeHnd;
 	
-	trackTable[0] = t1;
-	trackTable[1] = t2;
-	trackTable[2] = t3;
+	trackTable[1] = t1;
 }
 
 const u8 kModData[] = {
@@ -133,6 +131,6 @@ int main(){
 	
 	while(1){
 			while(!(vbReadPad() & K_ANY));
-			DoSound(333);
+			DoSound(52);
 	}
 }
