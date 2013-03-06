@@ -176,9 +176,9 @@ int main(){
 	u16 position;
 	
 	vbInit();
-	initMusic();
+	//initMusic();
 	initObjects();
-	intro();
+	//intro();
 	while(1){
 		handleInput();
 		
