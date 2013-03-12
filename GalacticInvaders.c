@@ -86,63 +86,63 @@ void intro(){
 	initObject(&S2);
 	
 	S.objData = (objectData*)logoLetter_S;
-	S.world.z = F_NUM_UP(3000);
-	S.speed.x = xspeed;
-	S.speed.z = zspeed;
+	S.worldPosition.z = F_NUM_UP(3000);
+	S.worldSpeed.x = xspeed;
+	S.worldSpeed.z = zspeed;
 	S.moveTo.z = F_NUM_UP(20);
 	S.moveTo.x = F_NUM_UP(-120);
 	
 	T.objData = (objectData*)logoLetter_T;
-	T.world.z = F_NUM_UP(3000);
-	T.speed.x = xspeed;
-	T.speed.z = zspeed;
+	T.worldPosition.z = F_NUM_UP(3000);
+	T.worldSpeed.x = xspeed;
+	T.worldSpeed.z = zspeed;
 	T.moveTo.z = F_NUM_UP(20);
 	T.moveTo.x = F_NUM_UP(-120);
 	
 	A.objData = (objectData*)logoLetter_A;
-	A.world.z = F_NUM_UP(3000);
-	A.speed.z = zspeed;
+	A.worldPosition.z = F_NUM_UP(3000);
+	A.worldSpeed.z = zspeed;
 	A.moveTo.z = F_NUM_UP(20);
 	
 	R.objData = (objectData*)logoLetter_R;
-	R.world.z = F_NUM_UP(3000);
-	R.speed.z = zspeed;
-	R.speed.x = xspeed;
+	R.worldPosition.z = F_NUM_UP(3000);
+	R.worldSpeed.z = zspeed;
+	R.worldSpeed.x = xspeed;
 	R.moveTo.z = F_NUM_UP(20);
 	R.moveTo.x = F_NUM_UP(85);
 	
 	W.objData = (objectData*)logoLetter_W;
-	W.world.z = F_NUM_UP(3000);
-	W.speed.z = zspeed;
-	W.speed.x = xspeed;
-	W.speed.y = yspeed;
+	W.worldPosition.z = F_NUM_UP(3000);
+	W.worldSpeed.z = zspeed;
+	W.worldSpeed.x = xspeed;
+	W.worldSpeed.y = yspeed;
 	W.moveTo.z = F_NUM_UP(20);
 	W.moveTo.x = F_NUM_UP(-110);
 	W.moveTo.y = F_NUM_UP(60);
 	
 	A2.objData = (objectData*)logoLetter_A;
-	A2.world.z = F_NUM_UP(3000);
-	A2.speed.x = xspeed;
-	A2.speed.y = yspeed;
-	A2.speed.z = zspeed;
+	A2.worldPosition.z = F_NUM_UP(3000);
+	A2.worldSpeed.x = xspeed;
+	A2.worldSpeed.y = yspeed;
+	A2.worldSpeed.z = zspeed;
 	A2.moveTo.z = F_NUM_UP(20);
 	A2.moveTo.x = F_NUM_UP(-45);
 	A2.moveTo.y = F_NUM_UP(60);
 	
 	R2.objData = (objectData*)logoLetter_R2;
-	R2.world.z = F_NUM_UP(3000);
-	R2.speed.x = xspeed;
-	R2.speed.y = yspeed;
-	R2.speed.z = zspeed;
+	R2.worldPosition.z = F_NUM_UP(3000);
+	R2.worldSpeed.x = xspeed;
+	R2.worldSpeed.y = yspeed;
+	R2.worldSpeed.z = zspeed;
 	R2.moveTo.z = F_NUM_UP(20);
 	R2.moveTo.x = F_NUM_UP(40);
 	R2.moveTo.y = F_NUM_UP(60);
 	
 	S2.objData = (objectData*)logoLetter_S2;
-	S2.world.z = F_NUM_UP(3000);
-	S2.speed.x = xspeed;
-	S2.speed.y = yspeed;
-	S2.speed.z = zspeed;
+	S2.worldPosition.z = F_NUM_UP(3000);
+	S2.worldSpeed.x = xspeed;
+	S2.worldSpeed.y = yspeed;
+	S2.worldSpeed.z = zspeed;
 	S2.moveTo.z = F_NUM_UP(20);
 	S2.moveTo.x = F_NUM_UP(80);
 	S2.moveTo.y = F_NUM_UP(60);
@@ -158,14 +158,14 @@ void intro(){
 		moveObject(&R2);
 		moveObject(&S2);
 		
-		drawObject(&S,2,2,2);
-		drawObject(&T,2,2,2);
-		drawObject(&A,2,2,2);
-		drawObject(&R,2,2,2);
-		drawObject(&W,2,2,2);
-		drawObject(&A2,2,2,2);
-		drawObject(&R2,2,2,2);
-		drawObject(&S2,2,2,2);
+		drawObject(&S);
+		drawObject(&T);
+		drawObject(&A);
+		drawObject(&R);
+		drawObject(&W);
+		drawObject(&A2);
+		drawObject(&R2);
+		drawObject(&S2);
 		
 		screenControl();
 	}
@@ -176,9 +176,9 @@ int main(){
 	u16 position;
 	
 	vbInit();
-	//initMusic();
+	initMusic();
 	initObjects();
-	//intro();
+	intro();
 	while(1){
 		handleInput();
 		
@@ -214,13 +214,16 @@ int main(){
 					gameObjects[o+1].moveTo.z = gameObjects[o].moveTo.z;
 				}
 			}
-			drawObject(&gameObjects[o],1,1,1);
+			drawObject(&gameObjects[o]);
 		}
 
 		screenControl();
 	}
 }
 
+/*****************************************
+Get the music setup and ready to go
+*****************************************/
 void initMusic(){
 	u16 i;
 	
@@ -237,6 +240,10 @@ void initMusic(){
 	SND_REGS[0].SxLRV = 0x33;
 }
 
+/*****************************************
+Read the gamepad and seed the random number
+counter
+*****************************************/
 void handleInput(){
 	u8 speed = 30;
 	buttons = vbReadPad();
@@ -262,71 +269,77 @@ void handleInput(){
 	}
 }
 
+/******************************
+This gives us the flying forward effect
+******************************/
 void visualEffects(object* o){
-	if(o->world.z <= 0) {
-		o->world.z = F_NUM_UP(3000);
+	if(o->worldPosition.z <= 0) {
+		o->worldPosition.z = F_NUM_UP(3000);
 		o->moveTo.z = F_NUM_UP(3000);
 	}
 }
 
+/********************************
+This will move objects around in our 3d world
+********************************/
 void moveObject(object* o){
 	vector3d normal,difference;
 	s32 speed;
 	//Calculate the vector from the move to position to current world position.
 	//Then normalize the vector
-	if(!isEqualVector(&o->world,&o->moveTo)){
-		subtractVector(&o->world,&o->moveTo,&difference);
+	if(!isEqualVector(&o->worldPosition,&o->moveTo)){
+		subtractVector(&o->worldPosition,&o->moveTo,&difference);
 		normalizeVector(&difference,&normal);
 	}
 	//If the move to value is different then will calculate a speed based on the
 	//objects max speed in the given direction.
-	if(o->world.x != o->moveTo.x){
-		speed = F_MUL(normal.x,o->speed.x);
+	if(o->worldPosition.x != o->moveTo.x){
+		speed = F_MUL(normal.x,o->worldSpeed.x);
 		if(speed != 0 && ((speed<0)?((~speed)+1):(speed))<((difference.x<0)?((~difference.x)+1):(difference.x))){
-			o->world.x += speed;
+			o->worldPosition.x += speed;
 		}else{
-			o->world.x = o->moveTo.x;
+			o->worldPosition.x = o->moveTo.x;
 		}
 	}
-	if(o->world.y != o->moveTo.y){
-		speed = F_MUL(normal.y,o->speed.y);
+	if(o->worldPosition.y != o->moveTo.y){
+		speed = F_MUL(normal.y,o->worldSpeed.y);
 		if(speed != 0 && ((speed<0)?((~speed)+1):(speed))<((difference.y<0)?((~difference.y)+1):(difference.y))){
-			o->world.y += speed;
+			o->worldPosition.y += speed;
 		}else{
-			o->world.y = o->moveTo.y;
+			o->worldPosition.y = o->moveTo.y;
 		}
 	}
-	if(o->world.z != o->moveTo.z){
-		speed = F_MUL(normal.z,o->speed.z);
+	if(o->worldPosition.z != o->moveTo.z){
+		speed = F_MUL(normal.z,o->worldSpeed.z);
 		if(speed != 0 && ((speed<0)?((~speed)+1):(speed))<((difference.z<0)?((~difference.z)+1):(difference.z))){
-			o->world.z += speed;
+			o->worldPosition.z += speed;
 		}else{
-			o->world.z = o->moveTo.z;
+			o->worldPosition.z = o->moveTo.z;
 		}
 	}
 	
 	//Rotation
-	o->rotation.x += o->rotateSpeed.x;
-	if(o->rotation.x > F_NUM_UP(359)) o->rotation.x = F_SUB(o->rotation.x,F_NUM_UP(359));
-	if(o->rotation.x < F_NUM_UP(-359)) o->rotation.x = F_ADD(o->rotation.x,F_NUM_UP(359));
+	o->worldRotation.x += o->worldRotateSpeed.x;
+	if(o->worldRotation.x > F_NUM_UP(359)) o->worldRotation.x = F_SUB(o->worldRotation.x,F_NUM_UP(359));
+	if(o->worldRotation.x < F_NUM_UP(-359)) o->worldRotation.x = F_ADD(o->worldRotation.x,F_NUM_UP(359));
 	
-	o->rotation.y += o->rotateSpeed.y;
-	if(o->rotation.y > F_NUM_UP(359)) o->rotation.y = F_SUB(o->rotation.y,F_NUM_UP(359));
-	if(o->rotation.y < F_NUM_UP(-359)) o->rotation.y = F_ADD(o->rotation.y,F_NUM_UP(359));
+	o->worldRotation.y += o->worldRotateSpeed.y;
+	if(o->worldRotation.y > F_NUM_UP(359)) o->worldRotation.y = F_SUB(o->worldRotation.y,F_NUM_UP(359));
+	if(o->worldRotation.y < F_NUM_UP(-359)) o->worldRotation.y = F_ADD(o->worldRotation.y,F_NUM_UP(359));
 	
-	o->rotation.z += o->rotateSpeed.z;
-	if(o->rotation.z > F_NUM_UP(359)) o->rotation.z = F_SUB(o->rotation.z,F_NUM_UP(359));
-	if(o->rotation.z < F_NUM_UP(-359)) o->rotation.z = F_ADD(o->rotation.z,F_NUM_UP(359));
+	o->worldRotation.z += o->worldRotateSpeed.z;
+	if(o->worldRotation.z > F_NUM_UP(359)) o->worldRotation.z = F_SUB(o->worldRotation.z,F_NUM_UP(359));
+	if(o->worldRotation.z < F_NUM_UP(-359)) o->worldRotation.z = F_ADD(o->worldRotation.z,F_NUM_UP(359));
 	
 }
 
 /*********************
 See if object is currently moving
 *********************/
-u8 isMoving(object* o){
+u8 inline isMoving(object* o){
 	u8 r;
 	r=1;
-	if(isEqualVector(&o->world,&o->moveTo)){
+	if(isEqualVector(&o->worldPosition,&o->moveTo)){
 		r=0;
 	}
 	return r;
@@ -348,9 +361,27 @@ u8 isEqualVector(vector3d* v1, vector3d* v2){
 Subtracts two vectors
 *********************/
 void subtractVector(vector3d* vStart, vector3d* vEnd, vector3d* n){
-	n->x = vEnd->x - vStart->x;
-	n->y = vEnd->y - vStart->y;
-	n->z = vEnd->z - vStart->z;
+	n->x = F_SUB(vEnd->x,vStart->x);
+	n->y = F_SUB(vEnd->y,vStart->y);
+	n->z = F_SUB(vEnd->z,vStart->z);
+}
+
+/**********************
+Add two vectors together
+**********************/
+void addVector(vector3d* v1, vector3d* v2, vector3d* n){
+	n->x = F_ADD(v1->x,v2->x);
+	n->y = F_ADD(v1->y,v2->y);
+	n->z = F_ADD(v1->z,v2->z);
+}
+
+/************************
+Multiply two vectors together
+************************/
+void multiplyVector(vector3d* v1, vector3d* v2, vector3d* n){
+	n->x = F_MUL(v1->x,v2->x);
+	n->y = F_MUL(v1->y,v2->y);
+	n->z = F_MUL(v1->z,v2->z);
 }
 
 /**************************************
@@ -366,18 +397,37 @@ void copyMatrix(matrix3d m1, matrix3d m2){
 	}
 }
 
-void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
+/***************************
+This will calculate an objects
+world coordinates based on relative information
+***************************/
+void setObjectRelative(object* o, object* parent){
+	addVector(&o->position,&parent->worldPosition,&o->worldPosition);//Sets the position
+	addVector(&o->rotation,&parent->worldRotation,&o->worldRotation);//Sets rotation
+	addVector(&o->rotateSpeed,&parent->worldRotateSpeed,&o->worldRotateSpeed);//Sets the rotation speed
+	addVector(&o->speed,&parent->worldSpeed,&o->worldSpeed);//Sets the overall speed
+	multiplyVector(&o->scale,&parent->worldScale,&o->worldScale);//Sets the scale relative to other object
+}
+
+/**************************
+This procedure actually draws an
+object
+**************************/
+void drawObject(object* o){
 	s32 size;
 	vector3d v1,v2;
 	vector3d vt;
 	u8 verts,i;
 	s32 v,firstV;
 	
+	//If there is a parent object set this one relative to its parent
+	if(o->parent != (object*)0x00) setObjectRelative(o,o->parent);
+	
 	size=o->objData->size;//total elements in array
 	verts=o->objData->faceSize;//total vertices per section
 	
-	v=0;//right before first vertex
-	worldMatrix(m_world3d,o,xscale,yscale,zscale);
+	v=0;//first vertex
+	worldMatrix(m_world3d,o,o->worldScale.x,o->worldScale.y,o->worldScale.z);
 
 	while(v < size){
 		firstV = v;
@@ -404,7 +454,7 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 			v2.y = vt.y;
 			v2.z = vt.z;
 			
-			drawLine(&v1,&v2,3,o);
+			drawLine(&v1,&v2,3);
 			
 			v1.x = v2.x;
 			v1.y = v2.y;
@@ -422,32 +472,56 @@ void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale){
 			v2.y = vt.y;
 			v2.z = vt.z;
 			
-			drawLine(&v1,&v2,3,o);
+			drawLine(&v1,&v2,3);
 		}
 		v++;
 	}
 }
 
+/*********************************
+This initializes an object type
+*********************************/
 void inline initObject(object* o){
-	o->world.x = 0;
-	o->world.y = 0;
-	o->world.z = 0;
+	o->worldPosition.x = 0;
+	o->worldPosition.y = 0;
+	o->worldPosition.z = 0;
+	o->position.x = 0;
+	o->position.y = 0;
+	o->position.z = 0;
 	o->moveTo.x = 0;
 	o->moveTo.y = 0;
 	o->moveTo.z = 0;
+	o->worldRotation.x = 0;
+	o->worldRotation.y = 0;
+	o->worldRotation.z = 0;
 	o->rotation.x = 0;
 	o->rotation.y = 0;
 	o->rotation.z = 0;
+	o->worldRotateSpeed.x = 0;
+	o->worldRotateSpeed.y = 0;
+	o->worldRotateSpeed.z = 0;
 	o->rotateSpeed.x = 0;
 	o->rotateSpeed.y = 0;
 	o->rotateSpeed.z = 0;
+	o->worldSpeed.x = 0;
+	o->worldSpeed.y = 0;
+	o->worldSpeed.z = 0;
 	o->speed.x = 0;
 	o->speed.y = 0;
 	o->speed.z = 0;
+	//The scale is a multiplication factor so it is not fixed point
+	o->worldScale.x = F_NUM_UP(1);
+	o->worldScale.y = F_NUM_UP(1);
+	o->worldScale.z = F_NUM_UP(1);
+	o->scale.x = F_NUM_UP(1);
+	o->scale.y = F_NUM_UP(1);
+	o->scale.z = F_NUM_UP(1);
+	o->parent = (object*)0x00;
 }
 
 void initObjects(){
 	u16 i;
+	
 	for(i=0;i<MAX_GAME_OBJECTS;i++){
 		initObject(&gameObjects[i]);
 	}
@@ -462,75 +536,54 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].objData = (objectData*)deathStarWalls;
 	gameObjectsIdx++;
 	//tie fighter
-	gameObjects[gameObjectsIdx].world.x = F_NUM_UP(-150);
+	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(-150);
 	gameObjects[gameObjectsIdx].moveTo.x = F_NUM_UP(-150);
-	gameObjects[gameObjectsIdx].world.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].worldPosition.z = F_NUM_UP(3000);
 	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
-	gameObjects[gameObjectsIdx].rotation.y = F_NUM_UP(180);
-	gameObjects[gameObjectsIdx].speed.x = F_NUM_UP(5);
-	gameObjects[gameObjectsIdx].speed.y = F_NUM_UP(5);
-	gameObjects[gameObjectsIdx].speed.z = F_NUM_UP(10);
+	gameObjects[gameObjectsIdx].worldRotation.y = F_NUM_UP(180);
+	gameObjects[gameObjectsIdx].worldSpeed.x = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
 	gameObjectsIdx++;
 	//tie fighter wings
-	gameObjects[gameObjectsIdx].world.x = gameObjects[gameObjectsIdx-1].world.x;
-	gameObjects[gameObjectsIdx].moveTo.x = gameObjects[gameObjectsIdx-1].moveTo.x;
-	gameObjects[gameObjectsIdx].world.z = gameObjects[gameObjectsIdx-1].world.z;
-	gameObjects[gameObjectsIdx].moveTo.z = gameObjects[gameObjectsIdx-1].moveTo.z;
-	gameObjects[gameObjectsIdx].rotation.y = gameObjects[gameObjectsIdx-1].rotation.y;
-	gameObjects[gameObjectsIdx].speed.x = gameObjects[gameObjectsIdx-1].speed.x;
-	gameObjects[gameObjectsIdx].speed.y = gameObjects[gameObjectsIdx-1].speed.y;
-	gameObjects[gameObjectsIdx].speed.z = gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
 	gameObjectsIdx++;
 	//tie fighter
-	gameObjects[gameObjectsIdx].world.x = F_NUM_UP(-150);
+	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(-150);
 	gameObjects[gameObjectsIdx].moveTo.x = F_NUM_UP(-150);
-	gameObjects[gameObjectsIdx].world.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].worldPosition.z = F_NUM_UP(3000);
 	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
-	gameObjects[gameObjectsIdx].rotation.y = F_NUM_UP(180);
-	gameObjects[gameObjectsIdx].speed.x = F_NUM_UP(5);
-	gameObjects[gameObjectsIdx].speed.y = F_NUM_UP(5);
-	gameObjects[gameObjectsIdx].speed.z = F_NUM_UP(10);
+	gameObjects[gameObjectsIdx].worldRotation.y = F_NUM_UP(180);
+	gameObjects[gameObjectsIdx].worldSpeed.x = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
 	gameObjectsIdx++;
 	//tie fighter wings
-	gameObjects[gameObjectsIdx].world.x = gameObjects[gameObjectsIdx-1].world.x;
-	gameObjects[gameObjectsIdx].moveTo.x = gameObjects[gameObjectsIdx-1].moveTo.x;
-	gameObjects[gameObjectsIdx].world.z = gameObjects[gameObjectsIdx-1].world.z;
-	gameObjects[gameObjectsIdx].moveTo.z = gameObjects[gameObjectsIdx-1].moveTo.z;
-	gameObjects[gameObjectsIdx].rotation.y = gameObjects[gameObjectsIdx-1].rotation.y;
-	gameObjects[gameObjectsIdx].speed.x = gameObjects[gameObjectsIdx-1].speed.x;
-	gameObjects[gameObjectsIdx].speed.y = gameObjects[gameObjectsIdx-1].speed.y;
-	gameObjects[gameObjectsIdx].speed.z = gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
 	gameObjectsIdx++;
 	//tie fighter
-	gameObjects[gameObjectsIdx].world.x = F_NUM_UP(150);
+	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(150);
 	gameObjects[gameObjectsIdx].moveTo.x = F_NUM_UP(150);
-	gameObjects[gameObjectsIdx].world.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].worldPosition.z = F_NUM_UP(3000);
 	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
-	gameObjects[gameObjectsIdx].rotation.y = F_NUM_UP(180);
-	gameObjects[gameObjectsIdx].speed.x = F_NUM_UP(5);
-	gameObjects[gameObjectsIdx].speed.y = F_NUM_UP(5);
-	gameObjects[gameObjectsIdx].speed.z = F_NUM_UP(10);
+	gameObjects[gameObjectsIdx].worldRotation.y = F_NUM_UP(180);
+	gameObjects[gameObjectsIdx].worldSpeed.x = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
+	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
 	gameObjectsIdx++;
 	//tie fighter wings
-	gameObjects[gameObjectsIdx].world.x = gameObjects[gameObjectsIdx-1].world.x;
-	gameObjects[gameObjectsIdx].moveTo.x = gameObjects[gameObjectsIdx-1].moveTo.x;
-	gameObjects[gameObjectsIdx].world.z = gameObjects[gameObjectsIdx-1].world.z;
-	gameObjects[gameObjectsIdx].moveTo.z = gameObjects[gameObjectsIdx-1].moveTo.z;
-	gameObjects[gameObjectsIdx].rotation.y = gameObjects[gameObjectsIdx-1].rotation.y;
-	gameObjects[gameObjectsIdx].speed.x = gameObjects[gameObjectsIdx-1].speed.x;
-	gameObjects[gameObjectsIdx].speed.y = gameObjects[gameObjectsIdx-1].speed.y;
-	gameObjects[gameObjectsIdx].speed.z = gameObjects[gameObjectsIdx-1].speed.z;
+	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
 	gameObjectsIdx++;
 	//Wall Effects
-	gameObjects[gameObjectsIdx].world.z = F_NUM_UP(3000);
+	gameObjects[gameObjectsIdx].worldPosition.z = F_NUM_UP(3000);
 	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
-	gameObjects[gameObjectsIdx].speed.z = FLYING_SPEED;
+	gameObjects[gameObjectsIdx].worldSpeed.z = FLYING_SPEED;
 	gameObjects[gameObjectsIdx].objData = (objectData*)wallEffects;
 	gameObjectsIdx++;
 }
@@ -587,36 +640,36 @@ This is a combination of all necessary matrices.
 **********************************************/
 void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz){
 	s32 ax,ay,az;
-	ax = F_NUM_DN((o->rotation.x<0)?(F_NUM_UP(360)+o->rotation.x):(o->rotation.x));
-	ay = F_NUM_DN((o->rotation.y<0)?(F_NUM_UP(360)+o->rotation.y):(o->rotation.y));
-	az = F_NUM_DN((o->rotation.z<0)?(F_NUM_UP(360)+o->rotation.z):(o->rotation.z));
+	ax = F_NUM_DN((o->worldRotation.x<0)?(F_NUM_UP(360)+o->worldRotation.x):(o->worldRotation.x));
+	ay = F_NUM_DN((o->worldRotation.y<0)?(F_NUM_UP(360)+o->worldRotation.y):(o->worldRotation.y));
+	az = F_NUM_DN((o->worldRotation.z<0)?(F_NUM_UP(360)+o->worldRotation.z):(o->worldRotation.z));
 	
 	if(ax>359)ax=0;
 	if(ay>359)ay=0;
 	if(az>359)az=0;
 	
-	m[0][0]=F_MUL(F_MUL(F_NUM_UP(sx),F_COSINE(ay)),F_COSINE(az));
-	m[0][1]=F_MUL(F_MUL(F_NUM_UP(sx),F_COSINE(ay)),F_SINE(az));
-	m[0][2]=F_MUL(F_NUM_UP(sx),-(F_SINE(ay)));
+	m[0][0]=F_MUL(F_MUL(sx,F_COSINE(ay)),F_COSINE(az));
+	m[0][1]=F_MUL(F_MUL(sx,F_COSINE(ay)),F_SINE(az));
+	m[0][2]=F_MUL(sx,-(F_SINE(ay)));
 	m[0][3]=0;
 	
-	m[1][0]=F_ADD(F_MUL(F_MUL(F_MUL(F_NUM_UP(sy),F_SINE(ax)),F_SINE(ay)),F_COSINE(az)),
-	        F_MUL(F_MUL(F_NUM_UP(sy),F_COSINE(ax)),-F_SINE(az)));
-	m[1][1]=F_ADD(F_MUL(F_MUL(F_NUM_UP(sy),F_COSINE(ax)),F_COSINE(az)),
-	        F_MUL(F_MUL(F_MUL(F_NUM_UP(sy),F_SINE(ax)),F_SINE(ay)),F_SINE(az)));
-	m[1][2]=F_MUL(F_MUL(F_NUM_UP(sy),F_SINE(ax)),F_COSINE(ay));
+	m[1][0]=F_ADD(F_MUL(F_MUL(F_MUL(sy,F_SINE(ax)),F_SINE(ay)),F_COSINE(az)),
+	        F_MUL(F_MUL(sy,F_COSINE(ax)),-F_SINE(az)));
+	m[1][1]=F_ADD(F_MUL(F_MUL(sy,F_COSINE(ax)),F_COSINE(az)),
+	        F_MUL(F_MUL(F_MUL(sy,F_SINE(ax)),F_SINE(ay)),F_SINE(az)));
+	m[1][2]=F_MUL(F_MUL(sy,F_SINE(ax)),F_COSINE(ay));
 	m[1][3]=0;
 	
-	m[2][0]=F_ADD(F_MUL(F_MUL(F_MUL(F_NUM_UP(sz),F_COSINE(ax)),F_COSINE(az)),F_SINE(ay)),
-	        F_MUL(F_MUL(F_NUM_UP(sz),-F_SINE(ax)),-F_SINE(az)));
-	m[2][1]=F_ADD(F_MUL(F_MUL(F_NUM_UP(sz),-F_SINE(ax)),F_COSINE(az)),
-	        F_MUL(F_MUL(F_MUL(F_NUM_UP(sz),F_COSINE(ax)),F_SINE(ay)),F_SINE(az)));
-	m[2][2]=F_MUL(F_MUL(F_NUM_UP(sz),F_COSINE(ax)),F_COSINE(ay));
+	m[2][0]=F_ADD(F_MUL(F_MUL(F_MUL(sz,F_COSINE(ax)),F_COSINE(az)),F_SINE(ay)),
+	        F_MUL(F_MUL(sz,-F_SINE(ax)),-F_SINE(az)));
+	m[2][1]=F_ADD(F_MUL(F_MUL(sz,-F_SINE(ax)),F_COSINE(az)),
+	        F_MUL(F_MUL(F_MUL(sz,F_COSINE(ax)),F_SINE(ay)),F_SINE(az)));
+	m[2][2]=F_MUL(F_MUL(sz,F_COSINE(ax)),F_COSINE(ay));
 	m[2][3]=0;
 	
-	m[3][0]=F_SUB(o->world.x,cam.position.x);
-	m[3][1]=F_ADD(o->world.y,cam.position.y);
-	m[3][2]=F_SUB(o->world.z,cam.position.z);
+	m[3][0]=F_SUB(o->worldPosition.x,cam.position.x);
+	m[3][1]=F_ADD(o->worldPosition.y,cam.position.y);
+	m[3][2]=F_SUB(o->worldPosition.z,cam.position.z);
 	m[3][3]=F_NUM_UP(1);
 }
 
@@ -666,19 +719,19 @@ void translateCameraMatrix(matrix3d m, object* target){
 Fills the scale matrix
 ********************************/
 void scaleMatrix(matrix3d m,s32 sx, s32 sy, s32 sz){
-	m[0][0]=F_NUM_UP(sx);
+	m[0][0]=sx;
 	m[0][1]=0;
 	m[0][2]=0;
 	m[0][3]=0;
 	
 	m[1][0]=0;
-	m[1][1]=F_NUM_UP(sy);
+	m[1][1]=sy;
 	m[1][2]=0;
 	m[1][3]=0;
 	
 	m[2][0]=0;
 	m[2][1]=0;
-	m[2][2]=F_NUM_UP(sz);
+	m[2][2]=sz;
 	m[2][3]=0;
 	
 	m[3][0]=0;
@@ -864,7 +917,7 @@ void inline drawPoint(s32 x, s32 y, u8 color, s32 p){
 /*******************************
 My Line Algorithm (Brezenham based)
 *******************************/
-void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
+void drawLine(vector3d* v1, vector3d* v2, u8 color){
 	s32 vx,vy,vz,vx2,vy2;
 	s32 dx, dy, dz;
 	s32 sx,sy,sz,p,pixels,err;

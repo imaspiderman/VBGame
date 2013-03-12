@@ -25,11 +25,18 @@ typedef struct{
 
 typedef struct object{
 	objectAttributes attributes;
-	vector3d world;
+	struct object* parent;
+	vector3d worldPosition;
+	vector3d position;
 	vector3d moveTo;
+	vector3d worldRotation;
 	vector3d rotation;
+	vector3d worldRotateSpeed;
 	vector3d rotateSpeed;
+	vector3d worldSpeed;
 	vector3d speed;
+	vector3d worldScale;
+	vector3d scale;
 	objectData* objData;
 } object;
 

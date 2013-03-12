@@ -78,8 +78,9 @@ Functions
 Core Drawing Functions
 *********************************************************/
 void inline drawPoint(s32 x, s32 y, u8 color, s32 p);
-void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o);
-void drawObject(object* o, s32 xscale, s32 yscale, s32 zscale);
+void drawLine(vector3d* v1, vector3d* v2, u8 color);
+void drawObject(object* o);
+void setObjectRelative(object* o, object* parent);
 void emptyDrawQueue();
 /********************************************************/
 
@@ -101,6 +102,8 @@ void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz);
 void copyMatrix(matrix3d m1, matrix3d m2);
 void normalizeVector(vector3d* v, vector3d* n);
 void subtractVector(vector3d* vStart, vector3d* vEnd, vector3d* n);
+void addVector(vector3d* v1, vector3d* v2, vector3d* n);
+void multiplyVector(vector3d* v1, vector3d* v2, vector3d* n);
 u8 isEqualVector(vector3d* v1, vector3d* v2);
 void projectionMatrix(matrix3d m);
 /********************************************************/
@@ -119,10 +122,11 @@ Game functions
 void initObjects();
 void inline initObject(object* o);
 void moveObject(object* o);
-u8 isMoving(object* o);
+u8 inline isMoving(object* o);
 void visualEffects(object* o);
 void DoSound(u16 timerCount);
 void timeHnd(void);
+void initMusic();
 /********************************************************/
 
 
