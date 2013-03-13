@@ -21,10 +21,15 @@ typedef struct{
 
 typedef struct{
 	u8 visible;
-} objectAttributes;
+	u8 isShootable;
+	u16 hitMinY;
+	u16 hitMaxY;
+	u16 hitMinX;
+	u16 hitMaxX;
+} objectProperties;
 
 typedef struct object{
-	objectAttributes attributes;
+	objectProperties properties;
 	struct object* parent;
 	vector3d worldPosition;
 	vector3d position;
@@ -41,8 +46,10 @@ typedef struct object{
 } object;
 
 typedef struct{
+	vector3d worldPosition;
 	vector3d position;
 	vector3d target;
+	vector3d worldRotation;
 	vector3d rotation;
 	s32 d;
 } camera;

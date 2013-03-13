@@ -9,6 +9,11 @@ midiTrack t1 = {0,(midiNote*)track_0,1,0,0xFF};
 #define NUM_TRACKS 1
 midiTrack trackTable[NUM_TRACKS];
 
+//Timing stuff
+u8 laserVideoFrames = 3;
+u8 laserFrame = 0;
+u8 laserShot = 0;
+
 void DoMusic(u16 timerCount){
 	u8 i;
 	for(i=0; i<NUM_TRACKS; i++){
@@ -91,6 +96,9 @@ void intro(){
 	S.worldSpeed.z = zspeed;
 	S.moveTo.z = F_NUM_UP(20);
 	S.moveTo.x = F_NUM_UP(-120);
+	S.worldScale.x = F_NUM_UP(2);
+	S.worldScale.y = F_NUM_UP(2);
+	S.worldScale.z = F_NUM_UP(2);
 	
 	T.objData = (objectData*)logoLetter_T;
 	T.worldPosition.z = F_NUM_UP(3000);
@@ -98,11 +106,17 @@ void intro(){
 	T.worldSpeed.z = zspeed;
 	T.moveTo.z = F_NUM_UP(20);
 	T.moveTo.x = F_NUM_UP(-120);
+	T.worldScale.x = F_NUM_UP(2);
+	T.worldScale.y = F_NUM_UP(2);
+	T.worldScale.z = F_NUM_UP(2);
 	
 	A.objData = (objectData*)logoLetter_A;
 	A.worldPosition.z = F_NUM_UP(3000);
 	A.worldSpeed.z = zspeed;
 	A.moveTo.z = F_NUM_UP(20);
+	A.worldScale.x = F_NUM_UP(2);
+	A.worldScale.y = F_NUM_UP(2);
+	A.worldScale.z = F_NUM_UP(2);
 	
 	R.objData = (objectData*)logoLetter_R;
 	R.worldPosition.z = F_NUM_UP(3000);
@@ -110,6 +124,9 @@ void intro(){
 	R.worldSpeed.x = xspeed;
 	R.moveTo.z = F_NUM_UP(20);
 	R.moveTo.x = F_NUM_UP(85);
+	R.worldScale.x = F_NUM_UP(2);
+	R.worldScale.y = F_NUM_UP(2);
+	R.worldScale.z = F_NUM_UP(2);
 	
 	W.objData = (objectData*)logoLetter_W;
 	W.worldPosition.z = F_NUM_UP(3000);
@@ -119,6 +136,9 @@ void intro(){
 	W.moveTo.z = F_NUM_UP(20);
 	W.moveTo.x = F_NUM_UP(-110);
 	W.moveTo.y = F_NUM_UP(60);
+	W.worldScale.x = F_NUM_UP(2);
+	W.worldScale.y = F_NUM_UP(2);
+	W.worldScale.z = F_NUM_UP(2);
 	
 	A2.objData = (objectData*)logoLetter_A;
 	A2.worldPosition.z = F_NUM_UP(3000);
@@ -128,6 +148,9 @@ void intro(){
 	A2.moveTo.z = F_NUM_UP(20);
 	A2.moveTo.x = F_NUM_UP(-45);
 	A2.moveTo.y = F_NUM_UP(60);
+	A2.worldScale.x = F_NUM_UP(2);
+	A2.worldScale.y = F_NUM_UP(2);
+	A2.worldScale.z = F_NUM_UP(2);
 	
 	R2.objData = (objectData*)logoLetter_R2;
 	R2.worldPosition.z = F_NUM_UP(3000);
@@ -137,6 +160,9 @@ void intro(){
 	R2.moveTo.z = F_NUM_UP(20);
 	R2.moveTo.x = F_NUM_UP(40);
 	R2.moveTo.y = F_NUM_UP(60);
+	R2.worldScale.x = F_NUM_UP(2);
+	R2.worldScale.y = F_NUM_UP(2);
+	R2.worldScale.z = F_NUM_UP(2);
 	
 	S2.objData = (objectData*)logoLetter_S2;
 	S2.worldPosition.z = F_NUM_UP(3000);
@@ -146,6 +172,9 @@ void intro(){
 	S2.moveTo.z = F_NUM_UP(20);
 	S2.moveTo.x = F_NUM_UP(80);
 	S2.moveTo.y = F_NUM_UP(60);
+	S2.worldScale.x = F_NUM_UP(2);
+	S2.worldScale.y = F_NUM_UP(2);
+	S2.worldScale.z = F_NUM_UP(2);
 	
 	DoMusic(52);
 	while(!(vbReadPad() & K_ANY)){
@@ -198,6 +227,19 @@ int main(){
 				visualEffects(&gameObjects[o]);
 			}
 			
+			//Set the crosshairs with the camera
+			if(gameObjects[o].objData == (objectData*)crossHairs){
+				setObjectRelativeCamera(&gameObjects[o]);
+			}
+			
+			//Show the lasers if a shot has been fired
+			if(gameObjects[o].objData == (objectData*)lasers && laserShot == 1){
+				gameObjects[o].properties.visible = 1;
+			}
+			if(gameObjects[o].objData == (objectData*)lasers && laserShot == 0){
+				gameObjects[o].properties.visible = 0;
+			}
+			
 			//Make enemies move around in a sudo random manner
 			if(gameObjects[o].objData == (objectData*)tieFighter){
 				if(!isMoving(&gameObjects[o])){
@@ -215,9 +257,30 @@ int main(){
 				}
 			}
 			drawObject(&gameObjects[o]);
+			//Check for laser fire
+			if(laserShot == 1 && gameObjects[o].properties.isShootable == 1) doShot(&gameObjects[o]);
 		}
 
+		//Do laser animation
+		if(laserShot == 1 && laserFrame < laserVideoFrames) laserFrame++;
+		if(laserShot == 1 && laserFrame >= laserVideoFrames){
+			laserShot = 0;
+			laserFrame = 0;
+		}
+		
 		screenControl();
+	}
+}
+
+void doShot(object* o){
+	object* temp;
+	if(shotTest(o) == 1) {
+		o->properties.visible = 0;
+		temp = o->parent;
+		while(temp != (object*)0x00){
+			temp->properties.visible = 0;
+			temp = temp->parent;
+		}
 	}
 }
 
@@ -249,23 +312,26 @@ void handleInput(){
 	buttons = vbReadPad();
 	if(K_LL & buttons){
 		randomNumber += 1;
-		cam.position.x-=F_NUM_UP(speed);
-		if(cam.position.x <= F_NUM_UP(-300)) cam.position.x=F_NUM_UP(-300);
+		cam.worldPosition.x-=F_NUM_UP(speed);
+		if(cam.worldPosition.x <= F_NUM_UP(-300)) cam.worldPosition.x=F_NUM_UP(-300);
 	}
 	if(K_LR & buttons){
 		randomNumber += 2;
-		cam.position.x+=F_NUM_UP(speed);
-		if(cam.position.x >= F_NUM_UP(300)) cam.position.x=F_NUM_UP(300);
+		cam.worldPosition.x+=F_NUM_UP(speed);
+		if(cam.worldPosition.x >= F_NUM_UP(300)) cam.worldPosition.x=F_NUM_UP(300);
 	}
 	if(K_LD & buttons){
 		randomNumber += 3;
-		cam.position.y-=F_NUM_UP(speed);
-		if(cam.position.y <= F_NUM_UP(-180)) cam.position.y=F_NUM_UP(-180);
+		cam.worldPosition.y-=F_NUM_UP(speed);
+		if(cam.worldPosition.y <= F_NUM_UP(-180)) cam.worldPosition.y=F_NUM_UP(-180);
 	}
 	if(K_LU & buttons){
 		randomNumber += 4;
-		cam.position.y+=F_NUM_UP(speed);
-		if(cam.position.y >= F_NUM_UP(580)) cam.position.y=F_NUM_UP(580);
+		cam.worldPosition.y+=F_NUM_UP(speed);
+		if(cam.worldPosition.y >= F_NUM_UP(580)) cam.worldPosition.y=F_NUM_UP(580);
+	}
+	if(K_A & buttons){
+		laserShot = 1;
 	}
 }
 
@@ -407,6 +473,17 @@ void setObjectRelative(object* o, object* parent){
 	addVector(&o->rotateSpeed,&parent->worldRotateSpeed,&o->worldRotateSpeed);//Sets the rotation speed
 	addVector(&o->speed,&parent->worldSpeed,&o->worldSpeed);//Sets the overall speed
 	multiplyVector(&o->scale,&parent->worldScale,&o->worldScale);//Sets the scale relative to other object
+	//Apply properties
+	o->properties.visible = parent->properties.visible;
+}
+
+/******************************
+This will set objects relative to
+the camera
+******************************/
+void setObjectRelativeCamera(object* o){
+	addVector(&o->position,&cam.worldPosition,&o->worldPosition);
+	o->worldPosition.y = o->worldPosition.y * -1;
 }
 
 /**************************
@@ -419,6 +496,15 @@ void drawObject(object* o){
 	vector3d vt;
 	u8 verts,i;
 	s32 v,firstV;
+	
+	//Reset hit rectangles
+	if(o->properties.isShootable == 1){
+		o->properties.hitMinX = 0;
+		o->properties.hitMaxX = 0;
+		o->properties.hitMinY = 0;
+		o->properties.hitMaxY = 0;
+	}
+	if(o->properties.visible == 0) return;
 	
 	//If there is a parent object set this one relative to its parent
 	if(o->parent != (object*)0x00) setObjectRelative(o,o->parent);
@@ -454,7 +540,7 @@ void drawObject(object* o){
 			v2.y = vt.y;
 			v2.z = vt.z;
 			
-			drawLine(&v1,&v2,3);
+			drawLine(&v1,&v2,3,o);
 			
 			v1.x = v2.x;
 			v1.y = v2.y;
@@ -472,7 +558,7 @@ void drawObject(object* o){
 			v2.y = vt.y;
 			v2.z = vt.z;
 			
-			drawLine(&v1,&v2,3);
+			drawLine(&v1,&v2,3,o);
 		}
 		v++;
 	}
@@ -517,6 +603,9 @@ void inline initObject(object* o){
 	o->scale.y = F_NUM_UP(1);
 	o->scale.z = F_NUM_UP(1);
 	o->parent = (object*)0x00;
+	
+	o->properties.visible = 1;
+	o->properties.isShootable = 0;
 }
 
 void initObjects(){
@@ -526,9 +615,9 @@ void initObjects(){
 		initObject(&gameObjects[i]);
 	}
 	
-	cam.position.x = 0;
-	cam.position.y = 0;
-	cam.position.z = 0;
+	cam.worldPosition.x = 0;
+	cam.worldPosition.y = 0;
+	cam.worldPosition.z = 0;
 	cam.d = F_NUM_UP(128);
 	
 	gameObjectsIdx=0;
@@ -545,10 +634,12 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
+	gameObjects[gameObjectsIdx].properties.isShootable = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
+	gameObjects[gameObjectsIdx].properties.isShootable = 1;
 	gameObjectsIdx++;
 	//tie fighter
 	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(-150);
@@ -560,10 +651,12 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
+	gameObjects[gameObjectsIdx].properties.isShootable = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
+	gameObjects[gameObjectsIdx].properties.isShootable = 1;
 	gameObjectsIdx++;
 	//tie fighter
 	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(150);
@@ -575,16 +668,26 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
+	gameObjects[gameObjectsIdx].properties.isShootable = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
+	gameObjects[gameObjectsIdx].properties.isShootable = 1;
 	gameObjectsIdx++;
 	//Wall Effects
 	gameObjects[gameObjectsIdx].worldPosition.z = F_NUM_UP(3000);
 	gameObjects[gameObjectsIdx].moveTo.z = F_NUM_UP(3000);
 	gameObjects[gameObjectsIdx].worldSpeed.z = FLYING_SPEED;
 	gameObjects[gameObjectsIdx].objData = (objectData*)wallEffects;
+	gameObjectsIdx++;
+	//Cross Hairs
+	gameObjects[gameObjectsIdx].objData = (objectData*)crossHairs;
+	gameObjectsIdx++;
+	//Lasers
+	gameObjects[gameObjectsIdx].objData = (objectData*)lasers;
+	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
+	gameObjects[gameObjectsIdx].properties.visible = 0;
 	gameObjectsIdx++;
 }
 
@@ -667,9 +770,9 @@ void worldMatrix(matrix3d m, object* o, s32 sx, s32 sy, s32 sz){
 	m[2][2]=F_MUL(F_MUL(sz,F_COSINE(ax)),F_COSINE(ay));
 	m[2][3]=0;
 	
-	m[3][0]=F_SUB(o->worldPosition.x,cam.position.x);
-	m[3][1]=F_ADD(o->worldPosition.y,cam.position.y);
-	m[3][2]=F_SUB(o->worldPosition.z,cam.position.z);
+	m[3][0]=F_SUB(o->worldPosition.x,cam.worldPosition.x);
+	m[3][1]=F_ADD(o->worldPosition.y,cam.worldPosition.y);
+	m[3][2]=F_SUB(o->worldPosition.z,cam.worldPosition.z);
 	m[3][3]=F_NUM_UP(1);
 }
 
@@ -898,7 +1001,7 @@ void inline drawPoint(s32 x, s32 y, u8 color, s32 p){
 	u8 yleft;
 	
 	//Put a cap on parallax
-	if(p>20) p=20;
+	if(p>PARALLAX_MAX) p=PARALLAX_MAX;
 	
 	loffset = (((x-p)<<4) + (y>>4));
 	roffset = (loffset + (p<<5));
@@ -917,14 +1020,14 @@ void inline drawPoint(s32 x, s32 y, u8 color, s32 p){
 /*******************************
 My Line Algorithm (Brezenham based)
 *******************************/
-void drawLine(vector3d* v1, vector3d* v2, u8 color){
+void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
 	s32 vx,vy,vz,vx2,vy2;
 	s32 dx, dy, dz;
 	s32 sx,sy,sz,p,pixels,err;
 
 	//z clipping(clips whole line should improve in future)
-	if(v1->z<=(F_NUM_DN(cam.position.z))) return;
-	if(v2->z<=(F_NUM_DN(cam.position.z))) return;
+	if(v1->z<=(F_NUM_DN(cam.worldPosition.z))) return;
+	if(v2->z<=(F_NUM_DN(cam.worldPosition.z))) return;
 	
 	//Scale everything back to integers and apply projection
 	vx=F_NUM_DN(F_ADD(F_DIV(F_MUL(v1->x,cam.d),F_ADD(cam.d,v1->z)),F_NUM_UP(SCREEN_WIDTH>>1)));
@@ -932,6 +1035,17 @@ void drawLine(vector3d* v1, vector3d* v2, u8 color){
 
 	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2->x,cam.d),F_ADD(cam.d,v2->z)),F_NUM_UP(SCREEN_WIDTH>>1)));
 	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2->y,cam.d),F_ADD(cam.d,v2->z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
+	
+	//Set hit rectangle values
+	if(vx>o->properties.hitMaxX) o->properties.hitMaxX = vx;
+	if(vx<o->properties.hitMinX) o->properties.hitMinX = vx;
+	if(vx2>o->properties.hitMaxX) o->properties.hitMaxX = vx2;
+	if(vx2<o->properties.hitMinX) o->properties.hitMinX = vx2;
+	
+	if(vy>o->properties.hitMaxY) o->properties.hitMaxY = vy;
+	if(vy<o->properties.hitMinY) o->properties.hitMinY = vy;
+	if(vy2>o->properties.hitMaxY) o->properties.hitMaxY = vy2;
+	if(vy2<o->properties.hitMinY) o->properties.hitMinY = vy2;
 	
 	dx=(~(vx - vx2)+1);
 	dy=(~(vy - vy2)+1);
@@ -980,6 +1094,28 @@ void drawLine(vector3d* v1, vector3d* v2, u8 color){
 		}
 	}
 	CACHE_DISABLE;
+}
+
+/********************************
+Simple Shot test. We'll check to
+see that the objects hit rectangle
+is at the center of the screen.
+********************************/
+u8 shotTest(object* o){
+	u8 hit, screenX, screenY, objWidth, objHeight;
+	screenX = SCREEN_WIDTH >> 1;
+	screenY = SCREEN_HEIGHT >> 1;
+	objWidth = o->properties.hitMaxX - o->properties.hitMinX;
+	objHeight = o->properties.hitMaxY - o->properties.hitMinY;
+	hit = 0;
+	
+	if(
+	    ((o->properties.hitMinX + objWidth) >= screenX)
+		&& (o->properties.hitMinX <= screenX)
+		&& ((o->properties.hitMinY + objHeight) >= screenY)
+		&& (o->properties.hitMinY <= screenY)
+	) hit = 1;
+	return hit;
 }
 
 /*******************************

@@ -20,24 +20,16 @@ Defines
 *******************************/
 #define SCREEN_HEIGHT 224
 #define SCREEN_WIDTH 384
-#define EYE_Z 128
-#define EYE_X 192
-#define EYE_Y 112
 #define FAR_Z 4096
 #define _CacheEnable asm("mov 2,r15 \n ldsr r15,sr24":::"r15");
 #define _CacheDisable asm("ldsr r0,sr24");
-#define PARALLAX_MAX 31
+#define PARALLAX_MAX 20
 #define PARALLAX_SHIFT 8
 #define ROTATION_SPEED F_NUM_UP(6)
 #define FLYING_SPEED F_NUM_UP(50)
 /*******************************
 Variables
 *******************************/
-//frame buffers
-//u32* const LFB1 = (u32*)0x00000000;
-//u32* const RFB1 = (u32*)0x00010000;
-//u32* const LFB2 = (u32*)0x00008000;
-//u32* const RFB2 = (u32*)0x00018000;
 
 u32* currentFrameBuffer=(u32*)0x00008000;
 u32* nextFrameBuffer=(u32*)0x00000000;
@@ -78,10 +70,8 @@ Functions
 Core Drawing Functions
 *********************************************************/
 void inline drawPoint(s32 x, s32 y, u8 color, s32 p);
-void drawLine(vector3d* v1, vector3d* v2, u8 color);
+void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o);
 void drawObject(object* o);
-void setObjectRelative(object* o, object* parent);
-void emptyDrawQueue();
 /********************************************************/
 
 /*********************************************************
@@ -120,6 +110,7 @@ void vbInit();
 Game functions
 *********************************************************/
 void initObjects();
+void doShot(object* o);
 void inline initObject(object* o);
 void moveObject(object* o);
 u8 inline isMoving(object* o);
@@ -127,6 +118,9 @@ void visualEffects(object* o);
 void DoSound(u16 timerCount);
 void timeHnd(void);
 void initMusic();
+void setObjectRelative(object* o, object* parent);
+void setObjectRelativeCamera(object* o);
+u8 shotTest(object* o);
 /********************************************************/
 
 
