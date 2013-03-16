@@ -20,7 +20,7 @@ Defines
 *******************************/
 #define SCREEN_HEIGHT 224
 #define SCREEN_WIDTH 384
-#define FAR_Z 4096
+#define FAR_Z F_NUM_UP(4096)
 #define _CacheEnable asm("mov 2,r15 \n ldsr r15,sr24":::"r15");
 #define _CacheDisable asm("ldsr r0,sr24");
 #define PARALLAX_MAX 20
@@ -40,6 +40,9 @@ camera cam;
 #define MAX_GAME_OBJECTS 128
 object gameObjects[MAX_GAME_OBJECTS];
 u8 gameObjectsIdx;
+
+#define MAX_LASERS 3
+object laserObjects[MAX_LASERS];
 
 //controls
 u8 dPadPressed = 0;
@@ -121,6 +124,8 @@ void initMusic();
 void setObjectRelative(object* o, object* parent);
 void setObjectRelativeCamera(object* o);
 u8 shotTest(object* o);
+u8 detectCollision(object* o1, object* o2);
+void setCollisionCube(object* o, vector3d* v);
 /********************************************************/
 
 

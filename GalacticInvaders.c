@@ -9,10 +9,8 @@ midiTrack t1 = {0,(midiNote*)track_0,1,0,0xFF};
 #define NUM_TRACKS 1
 midiTrack trackTable[NUM_TRACKS];
 
-//Timing stuff
-u8 laserVideoFrames = 3;
-u8 laserFrame = 0;
-u8 laserShot = 0;
+//Easy reference
+object* crossH; //Cross hairs
 
 void DoMusic(u16 timerCount){
 	u8 i;
@@ -232,14 +230,6 @@ int main(){
 				setObjectRelativeCamera(&gameObjects[o]);
 			}
 			
-			//Show the lasers if a shot has been fired
-			if(gameObjects[o].objData == (objectData*)lasers && laserShot == 1){
-				gameObjects[o].properties.visible = 1;
-			}
-			if(gameObjects[o].objData == (objectData*)lasers && laserShot == 0){
-				gameObjects[o].properties.visible = 0;
-			}
-			
 			//Make enemies move around in a sudo random manner
 			if(gameObjects[o].objData == (objectData*)tieFighter){
 				if(!isMoving(&gameObjects[o])){
@@ -257,31 +247,50 @@ int main(){
 				}
 			}
 			drawObject(&gameObjects[o]);
-			//Check for laser fire
-			if(laserShot == 1 && gameObjects[o].properties.isShootable == 1) doShot(&gameObjects[o]);
 		}
-
-		//Do laser animation
-		if(laserShot == 1 && laserFrame < laserVideoFrames) laserFrame++;
-		if(laserShot == 1 && laserFrame >= laserVideoFrames){
-			laserShot = 0;
-			laserFrame = 0;
+		
+		//Show laser fire
+		for(o=0; o<MAX_LASERS; o++){
+			moveObject(&laserObjects[o]);
+			drawObject(&laserObjects[o]);
 		}
 		
 		screenControl();
 	}
 }
 
-void doShot(object* o){
-	object* temp;
-	if(shotTest(o) == 1) {
-		o->properties.visible = 0;
-		temp = o->parent;
-		while(temp != (object*)0x00){
-			temp->properties.visible = 0;
-			temp = temp->parent;
-		}
-	}
+/*****************************************
+Calculates detection between two objects
+using bounding cubes.
+*****************************************/
+u8 detectCollision(object* o1, object* o2){
+	u8 xAxis,yAxis,zAxis;
+	
+	if(
+		(o1->properties.hitCube.minX >= o2->properties.hitCube.minX && o1->properties.hitCube.minX <= o2->properties.hitCube.maxX) ||
+		(o1->properties.hitCube.maxX >= o2->properties.hitCube.minX && o1->properties.hitCube.maxX <= o2->properties.hitCube.maxX) ||
+		(o2->properties.hitCube.minX >= o1->properties.hitCube.minX && o2->properties.hitCube.minX <= o1->properties.hitCube.maxX) ||
+		(o2->properties.hitCube.maxX >= o1->properties.hitCube.minX && o2->properties.hitCube.maxX <= o1->properties.hitCube.maxX)
+	) xAxis = 1;
+	else return 0;
+	
+	if(
+		(o1->properties.hitCube.minY >= o2->properties.hitCube.minY && o1->properties.hitCube.minY <= o2->properties.hitCube.maxY) ||
+		(o1->properties.hitCube.maxY >= o2->properties.hitCube.minY && o1->properties.hitCube.maxY <= o2->properties.hitCube.maxY) ||
+		(o2->properties.hitCube.minY >= o1->properties.hitCube.minY && o2->properties.hitCube.minY <= o1->properties.hitCube.maxY) ||
+		(o2->properties.hitCube.maxY >= o1->properties.hitCube.minY && o2->properties.hitCube.maxY <= o1->properties.hitCube.maxY)
+	) yAxis = 1;
+	else return 0;
+	
+	if(
+		(o1->properties.hitCube.minZ >= o2->properties.hitCube.minZ && o1->properties.hitCube.minZ <= o2->properties.hitCube.maxZ) ||
+		(o1->properties.hitCube.maxZ >= o2->properties.hitCube.minZ && o1->properties.hitCube.maxZ <= o2->properties.hitCube.maxZ) ||
+		(o2->properties.hitCube.minZ >= o1->properties.hitCube.minZ && o2->properties.hitCube.minZ <= o1->properties.hitCube.maxZ) ||
+		(o2->properties.hitCube.maxZ >= o1->properties.hitCube.minZ && o2->properties.hitCube.maxZ <= o1->properties.hitCube.maxZ)
+	) zAxis = 1;
+	else return 0;
+	
+	return 1;
 }
 
 /*****************************************
@@ -308,6 +317,7 @@ Read the gamepad and seed the random number
 counter
 *****************************************/
 void handleInput(){
+	u8 o;
 	u8 speed = 30;
 	buttons = vbReadPad();
 	if(K_LL & buttons){
@@ -331,7 +341,17 @@ void handleInput(){
 		if(cam.worldPosition.y >= F_NUM_UP(580)) cam.worldPosition.y=F_NUM_UP(580);
 	}
 	if(K_A & buttons){
-		laserShot = 1;
+		for(o=0; o<MAX_LASERS; o++){
+			if(laserObjects[o].properties.visible == 0){
+				setObjectRelative(&laserObjects[o],crossH);
+				laserObjects[o].moveTo.x = laserObjects[o].worldPosition.x;
+				laserObjects[o].moveTo.y = laserObjects[o].worldPosition.y;
+				laserObjects[o].moveTo.z = FAR_Z;
+				laserObjects[o].speed.z = F_NUM_UP(50);
+				laserObjects[o].properties.visible = 1;
+				break;
+			}
+		}
 	}
 }
 
@@ -383,6 +403,9 @@ void moveObject(object* o){
 			o->worldPosition.z = o->moveTo.z;
 		}
 	}
+	
+	//Clip Far Z
+	if(o->worldPosition.z >= FAR_Z) o->properties.visible = 0;
 	
 	//Rotation
 	o->worldRotation.x += o->worldRotateSpeed.x;
@@ -473,8 +496,6 @@ void setObjectRelative(object* o, object* parent){
 	addVector(&o->rotateSpeed,&parent->worldRotateSpeed,&o->worldRotateSpeed);//Sets the rotation speed
 	addVector(&o->speed,&parent->worldSpeed,&o->worldSpeed);//Sets the overall speed
 	multiplyVector(&o->scale,&parent->worldScale,&o->worldScale);//Sets the scale relative to other object
-	//Apply properties
-	o->properties.visible = parent->properties.visible;
 }
 
 /******************************
@@ -497,17 +518,15 @@ void drawObject(object* o){
 	u8 verts,i;
 	s32 v,firstV;
 	
-	//Reset hit rectangles
-	if(o->properties.isShootable == 1){
-		o->properties.hitMinX = 0;
-		o->properties.hitMaxX = 0;
-		o->properties.hitMinY = 0;
-		o->properties.hitMaxY = 0;
+	//Reset hit cubes
+	if(o->properties.detectCollision == 1){
+		o->properties.hitCube.reset = 1;
 	}
-	if(o->properties.visible == 0) return;
 	
 	//If there is a parent object set this one relative to its parent
 	if(o->parent != (object*)0x00) setObjectRelative(o,o->parent);
+	
+	if(o->properties.visible == 0) return;
 	
 	size=o->objData->size;//total elements in array
 	verts=o->objData->faceSize;//total vertices per section
@@ -527,6 +546,8 @@ void drawObject(object* o){
 		v1.x = vt.x;
 		v1.y = vt.y;
 		v1.z = vt.z;
+		
+		setCollisionCube(o,&v1);
 
 		for(i=1; i<verts; i++){			
 			v2.x = F_NUM_UP(o->objData->data[++v]);
@@ -539,6 +560,8 @@ void drawObject(object* o){
 			v2.x = vt.x;
 			v2.y = vt.y;
 			v2.z = vt.z;
+			
+			setCollisionCube(o,&v2);
 			
 			drawLine(&v1,&v2,3,o);
 			
@@ -558,10 +581,36 @@ void drawObject(object* o){
 			v2.y = vt.y;
 			v2.z = vt.z;
 			
+			setCollisionCube(o,&v2);
+			
 			drawLine(&v1,&v2,3,o);
 		}
 		v++;
 	}
+}
+
+/*****************************************
+Sets the values of a collision cube
+*****************************************/
+void setCollisionCube(object* o, vector3d* v){
+	if(o->properties.hitCube.reset == 1){
+		o->properties.hitCube.minX = v->x;
+		o->properties.hitCube.minY = v->y;
+		o->properties.hitCube.minZ = v->z;
+		o->properties.hitCube.maxX = v->x;
+		o->properties.hitCube.maxY = v->y;
+		o->properties.hitCube.maxZ = v->z;
+		o->properties.hitCube.reset = 0;
+		return;
+	}
+	
+	if(v->x < o->properties.hitCube.minX) o->properties.hitCube.minX = v->x;
+	if(v->y < o->properties.hitCube.minY) o->properties.hitCube.minY = v->y;
+	if(v->z < o->properties.hitCube.minZ) o->properties.hitCube.minZ = v->z;
+	
+	if(v->x > o->properties.hitCube.maxX) o->properties.hitCube.maxX = v->x;
+	if(v->y > o->properties.hitCube.maxY) o->properties.hitCube.maxY = v->y;
+	if(v->z > o->properties.hitCube.maxZ) o->properties.hitCube.maxZ = v->z;
 }
 
 /*********************************
@@ -605,7 +654,7 @@ void inline initObject(object* o){
 	o->parent = (object*)0x00;
 	
 	o->properties.visible = 1;
-	o->properties.isShootable = 0;
+	o->properties.detectCollision = 0;
 }
 
 void initObjects(){
@@ -613,6 +662,11 @@ void initObjects(){
 	
 	for(i=0;i<MAX_GAME_OBJECTS;i++){
 		initObject(&gameObjects[i]);
+	}
+	for(i=0;i<MAX_LASERS;i++){
+		initObject(&laserObjects[i]);
+		laserObjects[i].objData = (objectData*)lasers;
+		laserObjects[i].properties.visible = 0;
 	}
 	
 	cam.worldPosition.x = 0;
@@ -634,12 +688,12 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
-	gameObjects[gameObjectsIdx].properties.isShootable = 1;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
-	gameObjects[gameObjectsIdx].properties.isShootable = 1;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter
 	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(-150);
@@ -651,12 +705,12 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
-	gameObjects[gameObjectsIdx].properties.isShootable = 1;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
-	gameObjects[gameObjectsIdx].properties.isShootable = 1;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter
 	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(150);
@@ -668,12 +722,12 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
-	gameObjects[gameObjectsIdx].properties.isShootable = 1;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
-	gameObjects[gameObjectsIdx].properties.isShootable = 1;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//Wall Effects
 	gameObjects[gameObjectsIdx].worldPosition.z = F_NUM_UP(3000);
@@ -683,11 +737,7 @@ void initObjects(){
 	gameObjectsIdx++;
 	//Cross Hairs
 	gameObjects[gameObjectsIdx].objData = (objectData*)crossHairs;
-	gameObjectsIdx++;
-	//Lasers
-	gameObjects[gameObjectsIdx].objData = (objectData*)lasers;
-	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
-	gameObjects[gameObjectsIdx].properties.visible = 0;
+	crossH = &gameObjects[gameObjectsIdx];
 	gameObjectsIdx++;
 }
 
@@ -1036,17 +1086,6 @@ void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
 	vx2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2->x,cam.d),F_ADD(cam.d,v2->z)),F_NUM_UP(SCREEN_WIDTH>>1)));
 	vy2=F_NUM_DN(F_ADD(F_DIV(F_MUL(v2->y,cam.d),F_ADD(cam.d,v2->z)),F_NUM_UP(SCREEN_HEIGHT>>1)));
 	
-	//Set hit rectangle values
-	if(vx>o->properties.hitMaxX) o->properties.hitMaxX = vx;
-	if(vx<o->properties.hitMinX) o->properties.hitMinX = vx;
-	if(vx2>o->properties.hitMaxX) o->properties.hitMaxX = vx2;
-	if(vx2<o->properties.hitMinX) o->properties.hitMinX = vx2;
-	
-	if(vy>o->properties.hitMaxY) o->properties.hitMaxY = vy;
-	if(vy<o->properties.hitMinY) o->properties.hitMinY = vy;
-	if(vy2>o->properties.hitMaxY) o->properties.hitMaxY = vy2;
-	if(vy2<o->properties.hitMinY) o->properties.hitMinY = vy2;
-	
 	dx=(~(vx - vx2)+1);
 	dy=(~(vy - vy2)+1);
 	dz=(~(F_NUM_DN(F_SUB(v1->z,v2->z))+1));
@@ -1094,28 +1133,6 @@ void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
 		}
 	}
 	CACHE_DISABLE;
-}
-
-/********************************
-Simple Shot test. We'll check to
-see that the objects hit rectangle
-is at the center of the screen.
-********************************/
-u8 shotTest(object* o){
-	u8 hit, screenX, screenY, objWidth, objHeight;
-	screenX = SCREEN_WIDTH >> 1;
-	screenY = SCREEN_HEIGHT >> 1;
-	objWidth = o->properties.hitMaxX - o->properties.hitMinX;
-	objHeight = o->properties.hitMaxY - o->properties.hitMinY;
-	hit = 0;
-	
-	if(
-	    ((o->properties.hitMinX + objWidth) >= screenX)
-		&& (o->properties.hitMinX <= screenX)
-		&& ((o->properties.hitMinY + objHeight) >= screenY)
-		&& (o->properties.hitMinY <= screenY)
-	) hit = 1;
-	return hit;
 }
 
 /*******************************

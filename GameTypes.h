@@ -20,12 +20,19 @@ typedef struct{
 } objectData;
 
 typedef struct{
+	u8 reset;
+	s32 minX;
+	s32 minY;
+	s32 minZ;
+	s32 maxX;
+	s32 maxY;
+	s32 maxZ;
+}collisionCube;
+
+typedef struct{
 	u8 visible;
-	u8 isShootable;
-	u16 hitMinY;
-	u16 hitMaxY;
-	u16 hitMinX;
-	u16 hitMaxX;
+	u8 detectCollision;
+	collisionCube hitCube;
 } objectProperties;
 
 typedef struct object{
@@ -53,6 +60,17 @@ typedef struct{
 	vector3d rotation;
 	s32 d;
 } camera;
+
+typedef struct{
+	u8 duration;//number of frames
+	u8 currentFrame;//current frame
+	object animObject;//animation object data
+} keyFrame;
+
+typedef struct{
+	u8 size;
+	keyFrame* frames;
+} animation;
 
 typedef s32 matrix3d[4][4];//transformation matrix
 #endif
