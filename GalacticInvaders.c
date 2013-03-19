@@ -2,12 +2,23 @@
 #include "GameData.h"
 #include "GameTypes.h"
 #include "Music.h"
+#include "Font.h"
 
 //Music stuff
 #define MAX_NOTE_LENGTH 1600
 midiTrack t1 = {0,(midiNote*)track_0,1,0,0xFF};
 #define NUM_TRACKS 1
 midiTrack trackTable[NUM_TRACKS];
+
+char debugX[]    = {"x:    "};
+char debugY[]    = {"y:    "};
+char debugZ[]    = {"z:    "};
+char debugMinX[] = {"min x:"};
+char debugMaxX[] = {"max x:"};
+char debugMinY[] = {"min y:"};
+char debugMaxY[] = {"max y:"};
+char debugMinZ[] = {"min z:"};
+char debugMaxZ[] = {"max z:"};
 
 //Easy reference
 object* crossH; //Cross hairs
@@ -199,7 +210,7 @@ void intro(){
 }
 
 int main(){
-	u8 o;
+	u8 o,g;
 	u16 position;
 	
 	vbInit();
@@ -251,9 +262,24 @@ int main(){
 		
 		//Show laser fire
 		for(o=0; o<MAX_LASERS; o++){
+			if(laserObjects[o].properties.visible == 0) break;
 			moveObject(&laserObjects[o]);
 			drawObject(&laserObjects[o]);
+			//Collision detection
+			if(laserObjects[o].properties.visible == 1){
+				for(g=0; g<gameObjectsIdx; g++){
+					if(gameObjects[g].properties.detectCollision == 1 && gameObjects[g].properties.visible == 1){
+						if(detectCollision(&gameObjects[g],&laserObjects[o]) == 1){
+							laserObjects[o].properties.visible = 0;
+							gameObjects[g].properties.visible = 0;
+						}
+					}
+				}
+			}
 		}
+		
+		vbTextOut(0,7,4,itoa(laserObjects[0].properties.hitCube.minX,16,8));
+		vbTextOut(0,7,5,itoa(laserObjects[0].properties.hitCube.maxX,16,8));
 		
 		screenControl();
 	}
@@ -266,31 +292,55 @@ using bounding cubes.
 u8 detectCollision(object* o1, object* o2){
 	u8 xAxis,yAxis,zAxis;
 	
-	if(
-		(o1->properties.hitCube.minX >= o2->properties.hitCube.minX && o1->properties.hitCube.minX <= o2->properties.hitCube.maxX) ||
-		(o1->properties.hitCube.maxX >= o2->properties.hitCube.minX && o1->properties.hitCube.maxX <= o2->properties.hitCube.maxX) ||
-		(o2->properties.hitCube.minX >= o1->properties.hitCube.minX && o2->properties.hitCube.minX <= o1->properties.hitCube.maxX) ||
-		(o2->properties.hitCube.maxX >= o1->properties.hitCube.minX && o2->properties.hitCube.maxX <= o1->properties.hitCube.maxX)
-	) xAxis = 1;
+	if((o1->properties.hitCube.minX >= o2->properties.hitCube.minX && o1->properties.hitCube.minX <= o2->properties.hitCube.maxX) ||
+	   (o1->properties.hitCube.maxX >= o2->properties.hitCube.minX && o1->properties.hitCube.maxX <= o2->properties.hitCube.maxX) ||
+	   (o2->properties.hitCube.minX >= o1->properties.hitCube.minX && o2->properties.hitCube.minX <= o1->properties.hitCube.maxX) ||
+	   (o2->properties.hitCube.maxX >= o1->properties.hitCube.minX && o2->properties.hitCube.maxX <= o1->properties.hitCube.maxX)
+	  ) xAxis = 1;
 	else return 0;
 	
-	if(
-		(o1->properties.hitCube.minY >= o2->properties.hitCube.minY && o1->properties.hitCube.minY <= o2->properties.hitCube.maxY) ||
-		(o1->properties.hitCube.maxY >= o2->properties.hitCube.minY && o1->properties.hitCube.maxY <= o2->properties.hitCube.maxY) ||
-		(o2->properties.hitCube.minY >= o1->properties.hitCube.minY && o2->properties.hitCube.minY <= o1->properties.hitCube.maxY) ||
-		(o2->properties.hitCube.maxY >= o1->properties.hitCube.minY && o2->properties.hitCube.maxY <= o1->properties.hitCube.maxY)
-	) yAxis = 1;
+	if((o1->properties.hitCube.minY >= o2->properties.hitCube.minY && o1->properties.hitCube.minY <= o2->properties.hitCube.maxY) ||
+	   (o1->properties.hitCube.maxY >= o2->properties.hitCube.minY && o1->properties.hitCube.maxY <= o2->properties.hitCube.maxY) ||
+	   (o2->properties.hitCube.minY >= o1->properties.hitCube.minY && o2->properties.hitCube.minY <= o1->properties.hitCube.maxY) ||
+	   (o2->properties.hitCube.maxY >= o1->properties.hitCube.minY && o2->properties.hitCube.maxY <= o1->properties.hitCube.maxY)
+	  ) yAxis = 1;
 	else return 0;
 	
-	if(
-		(o1->properties.hitCube.minZ >= o2->properties.hitCube.minZ && o1->properties.hitCube.minZ <= o2->properties.hitCube.maxZ) ||
-		(o1->properties.hitCube.maxZ >= o2->properties.hitCube.minZ && o1->properties.hitCube.maxZ <= o2->properties.hitCube.maxZ) ||
-		(o2->properties.hitCube.minZ >= o1->properties.hitCube.minZ && o2->properties.hitCube.minZ <= o1->properties.hitCube.maxZ) ||
-		(o2->properties.hitCube.maxZ >= o1->properties.hitCube.minZ && o2->properties.hitCube.maxZ <= o1->properties.hitCube.maxZ)
-	) zAxis = 1;
+	if((o1->properties.hitCube.minZ >= o2->properties.hitCube.minZ && o1->properties.hitCube.minZ <= o2->properties.hitCube.maxZ) ||
+	   (o1->properties.hitCube.maxZ >= o2->properties.hitCube.minZ && o1->properties.hitCube.maxZ <= o2->properties.hitCube.maxZ) ||
+	   (o2->properties.hitCube.minZ >= o1->properties.hitCube.minZ && o2->properties.hitCube.minZ <= o1->properties.hitCube.maxZ) ||
+	   (o2->properties.hitCube.maxZ >= o1->properties.hitCube.minZ && o2->properties.hitCube.maxZ <= o1->properties.hitCube.maxZ)
+	  ) zAxis = 1;
 	else return 0;
 	
 	return 1;
+}
+
+
+/*****************************************
+Sets the values of a collision cube
+*****************************************/
+void setCollisionCube(object* o, vector3d* v){
+	if(o->properties.hitCube.reset == 1){
+		o->properties.hitCube.minX = v->x;
+		o->properties.hitCube.minY = v->y;
+		o->properties.hitCube.minZ = v->z;
+		o->properties.hitCube.maxX = v->x;
+		o->properties.hitCube.maxY = v->y;
+		o->properties.hitCube.maxZ = v->z;
+		o->properties.hitCube.reset = 0;
+		vbTextOut(0,7,1,itoa(v->x,16,8));
+		vbTextOut(0,7,2,itoa(v->y,16,8));
+		vbTextOut(0,7,3,itoa(v->z,16,8));
+	}
+	
+	if(v->x < o->properties.hitCube.minX) o->properties.hitCube.minX = v->x;
+	if(v->y < o->properties.hitCube.minY) o->properties.hitCube.minY = v->y;
+	if(v->z < o->properties.hitCube.minZ) o->properties.hitCube.minZ = v->z;
+	
+	if(v->x > o->properties.hitCube.maxX) o->properties.hitCube.maxX = v->x;
+	if(v->y > o->properties.hitCube.maxY) o->properties.hitCube.maxY = v->y;
+	if(v->z > o->properties.hitCube.maxZ) o->properties.hitCube.maxZ = v->z;
 }
 
 /*****************************************
@@ -341,16 +391,17 @@ void handleInput(){
 		if(cam.worldPosition.y >= F_NUM_UP(580)) cam.worldPosition.y=F_NUM_UP(580);
 	}
 	if(K_A & buttons){
-		for(o=0; o<MAX_LASERS; o++){
-			if(laserObjects[o].properties.visible == 0){
-				setObjectRelative(&laserObjects[o],crossH);
-				laserObjects[o].moveTo.x = laserObjects[o].worldPosition.x;
-				laserObjects[o].moveTo.y = laserObjects[o].worldPosition.y;
-				laserObjects[o].moveTo.z = FAR_Z;
-				laserObjects[o].speed.z = F_NUM_UP(50);
-				laserObjects[o].properties.visible = 1;
-				break;
-			}
+		while(o<MAX_LASERS && laserObjects[o].properties.visible ==1){
+			o++;
+		}
+		if(o<MAX_LASERS && laserObjects[o].properties.visible == 0){
+			setObjectRelative(&laserObjects[o],crossH);
+			laserObjects[o].moveTo.x = laserObjects[o].worldPosition.x;
+			laserObjects[o].moveTo.y = laserObjects[o].worldPosition.y;
+			laserObjects[o].moveTo.z = FAR_Z;
+			laserObjects[o].speed.z = F_NUM_UP(50);
+			laserObjects[o].properties.visible = 1;
+			laserObjects[o].properties.detectCollision = 1;
 		}
 	}
 }
@@ -496,6 +547,8 @@ void setObjectRelative(object* o, object* parent){
 	addVector(&o->rotateSpeed,&parent->worldRotateSpeed,&o->worldRotateSpeed);//Sets the rotation speed
 	addVector(&o->speed,&parent->worldSpeed,&o->worldSpeed);//Sets the overall speed
 	multiplyVector(&o->scale,&parent->worldScale,&o->worldScale);//Sets the scale relative to other object
+	
+	o->properties.visible = parent->properties.visible;
 }
 
 /******************************
@@ -546,8 +599,6 @@ void drawObject(object* o){
 		v1.x = vt.x;
 		v1.y = vt.y;
 		v1.z = vt.z;
-		
-		setCollisionCube(o,&v1);
 
 		for(i=1; i<verts; i++){			
 			v2.x = F_NUM_UP(o->objData->data[++v]);
@@ -560,8 +611,6 @@ void drawObject(object* o){
 			v2.x = vt.x;
 			v2.y = vt.y;
 			v2.z = vt.z;
-			
-			setCollisionCube(o,&v2);
 			
 			drawLine(&v1,&v2,3,o);
 			
@@ -581,36 +630,10 @@ void drawObject(object* o){
 			v2.y = vt.y;
 			v2.z = vt.z;
 			
-			setCollisionCube(o,&v2);
-			
 			drawLine(&v1,&v2,3,o);
 		}
 		v++;
 	}
-}
-
-/*****************************************
-Sets the values of a collision cube
-*****************************************/
-void setCollisionCube(object* o, vector3d* v){
-	if(o->properties.hitCube.reset == 1){
-		o->properties.hitCube.minX = v->x;
-		o->properties.hitCube.minY = v->y;
-		o->properties.hitCube.minZ = v->z;
-		o->properties.hitCube.maxX = v->x;
-		o->properties.hitCube.maxY = v->y;
-		o->properties.hitCube.maxZ = v->z;
-		o->properties.hitCube.reset = 0;
-		return;
-	}
-	
-	if(v->x < o->properties.hitCube.minX) o->properties.hitCube.minX = v->x;
-	if(v->y < o->properties.hitCube.minY) o->properties.hitCube.minY = v->y;
-	if(v->z < o->properties.hitCube.minZ) o->properties.hitCube.minZ = v->z;
-	
-	if(v->x > o->properties.hitCube.maxX) o->properties.hitCube.maxX = v->x;
-	if(v->y > o->properties.hitCube.maxY) o->properties.hitCube.maxY = v->y;
-	if(v->z > o->properties.hitCube.maxZ) o->properties.hitCube.maxZ = v->z;
 }
 
 /*********************************
@@ -693,7 +716,6 @@ void initObjects(){
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
-	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter
 	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(-150);
@@ -710,7 +732,6 @@ void initObjects(){
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
-	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter
 	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(150);
@@ -727,7 +748,6 @@ void initObjects(){
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
-	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//Wall Effects
 	gameObjects[gameObjectsIdx].worldPosition.z = F_NUM_UP(3000);
@@ -1038,6 +1058,24 @@ void vbInit(){
 	tim_vector = (u32)timeHnd;
 	
 	trackTable[0] = t1;
+	
+	//load font
+	copymem((u8*)CharSeg3, PVB_FONT, 0x2000);
+	vbTextOut(0,0,1,debugX);
+	vbTextOut(0,0,2,debugY);
+	vbTextOut(0,0,3,debugZ);
+	vbTextOut(0,0,4,debugMinX);
+	vbTextOut(0,0,5,debugMaxX);
+	vbTextOut(0,0,6,debugMinY);
+	vbTextOut(0,0,7,debugMaxY);
+	vbTextOut(0,0,8,debugMinZ);
+	vbTextOut(0,0,9,debugMaxZ);
+
+	//world info
+	WA[31].head = WRLD_ON;
+	WA[31].w = 200;
+	WA[31].h = 200;
+	WA[30].head = WRLD_END;
 }
 /*******************************
 Draws a pixel onto the screen
@@ -1074,6 +1112,10 @@ void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
 	s32 vx,vy,vz,vx2,vy2;
 	s32 dx, dy, dz;
 	s32 sx,sy,sz,p,pixels,err;
+	
+	//Set the collision Cubes
+	setCollisionCube(o,v1);
+	setCollisionCube(o,v2);
 
 	//z clipping(clips whole line should improve in future)
 	if(v1->z<=(F_NUM_DN(cam.worldPosition.z))) return;

@@ -41,7 +41,7 @@ camera cam;
 object gameObjects[MAX_GAME_OBJECTS];
 u8 gameObjectsIdx;
 
-#define MAX_LASERS 3
+#define MAX_LASERS 5
 object laserObjects[MAX_LASERS];
 
 //controls
