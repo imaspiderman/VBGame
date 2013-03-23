@@ -19,6 +19,7 @@ char debugMinY[] = {"min y:"};
 char debugMaxY[] = {"max y:"};
 char debugMinZ[] = {"min z:"};
 char debugMaxZ[] = {"max z:"};
+char debugHit[] = {"hit occured"};
 
 //Easy reference
 object* crossH; //Cross hairs
@@ -212,6 +213,7 @@ void intro(){
 int main(){
 	u8 o,g;
 	u16 position;
+	object* oPtr;
 	
 	vbInit();
 	initMusic();
@@ -272,6 +274,12 @@ int main(){
 						if(detectCollision(&gameObjects[g],&laserObjects[o]) == 1){
 							laserObjects[o].properties.visible = 0;
 							gameObjects[g].properties.visible = 0;
+							oPtr = gameObjects[g].parent;
+							while(oPtr != (object*)(0x00)){
+								oPtr->properties.visible = 0;
+								oPtr = oPtr->parent;
+							}
+							vbTextOut(0,7,10,debugHit);
 						}
 					}
 				}
@@ -401,7 +409,6 @@ void handleInput(){
 			laserObjects[o].moveTo.z = FAR_Z;
 			laserObjects[o].speed.z = F_NUM_UP(50);
 			laserObjects[o].properties.visible = 1;
-			laserObjects[o].properties.detectCollision = 1;
 		}
 	}
 }
@@ -690,6 +697,7 @@ void initObjects(){
 		initObject(&laserObjects[i]);
 		laserObjects[i].objData = (objectData*)lasers;
 		laserObjects[i].properties.visible = 0;
+		laserObjects[i].properties.detectCollision = 1;
 	}
 	
 	cam.worldPosition.x = 0;
@@ -711,11 +719,11 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
-	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter
 	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(-150);
@@ -727,11 +735,11 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
-	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter
 	gameObjects[gameObjectsIdx].worldPosition.x = F_NUM_UP(150);
@@ -743,11 +751,11 @@ void initObjects(){
 	gameObjects[gameObjectsIdx].worldSpeed.y = F_NUM_UP(5);
 	gameObjects[gameObjectsIdx].worldSpeed.z = F_NUM_UP(10);
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighter;
-	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//tie fighter wings
 	gameObjects[gameObjectsIdx].parent = (object*)&gameObjects[gameObjectsIdx-1];
 	gameObjects[gameObjectsIdx].objData = (objectData*)tieFighterWings;
+	gameObjects[gameObjectsIdx].properties.detectCollision = 1;
 	gameObjectsIdx++;
 	//Wall Effects
 	gameObjects[gameObjectsIdx].worldPosition.z = F_NUM_UP(3000);
@@ -1139,8 +1147,6 @@ void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
 	if(dx<0) dx=(~dx)+1;
 	if(dy<0) dy=(~dy)+1;
 	if(dz<0) dz=(~dz)+1;
-
-	vz=F_NUM_DN(v1->z);
 	
 	pixels=((dx>dy)?(dx):(dy))+1;
 	
@@ -1148,7 +1154,6 @@ void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
 	if(dy<dx){
 		err=(dx>>1);
 		sz=(sz)*(F_NUM_UP(dz)/((dx==0)?(1):(dx)));
-		vz=F_NUM_UP(vz);
 		for(p=0;p<pixels;p++){
 			drawPoint(vx,vy,color,(F_NUM_DN(vz)>>PARALLAX_SHIFT));
 			err+=dy;
@@ -1162,7 +1167,6 @@ void drawLine(vector3d* v1, vector3d* v2, u8 color, object* o){
 	}else{
 		err=(dy>>1);
 		sz=(sz)*(F_NUM_UP(dz)/((dy==0)?(1):(dy)));
-		vz=F_NUM_UP(vz);
 		for(p=0;p<pixels;p++){
 			drawPoint(vx,vy,color,(F_NUM_DN(vz)>>PARALLAX_SHIFT));
 			err+=dx;
